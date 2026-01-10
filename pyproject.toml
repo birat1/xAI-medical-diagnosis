@@ -1,7 +1,7 @@
 [project]
 name = "xai-medical-diagnosis"
 version = "0.1.0"
-description = "Add your description here"
+description = "explainable medical diagnosis project for final year"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
