@@ -1,4 +1,5 @@
 """Data preprocessing module for cleaning and normalizing datasets."""
+import argparse
 import logging
 from pathlib import Path
 
@@ -85,21 +86,35 @@ def save_processed_data(
     logger.info(f"Processed data saved to {output_dir}")  # noqa: G004
 
 if __name__ == "__main__":
-    try:
-        raw_data_path = "../data/raw/diabetes.csv"
-        processed_dir = "../data/processed/"
+    parser = argparse.ArgumentParser(description="Data Preprocessing Module")
 
+    parser.add_argument(
+        "--input",
+        type=str,
+        required=True,
+        help="Path to the raw CSV data file.",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="../data/processed/",
+        help="Directory to save the processed data.",
+    )
+    args = parser.parse_args()
+
+    try:
         # Load and Clean
-        data = load_data(raw_data_path)
+        data = load_data(args.input)
         cleaned_data = clean_data(data)
 
+        output_dir = args.output if args.output.endswith("/") else args.output + "/"
         # Analyse
-        perform_correlation_analysis(cleaned_data, output_path=processed_dir + "correlation_heatmap.png")
+        perform_correlation_analysis(cleaned_data, output_path=output_dir + "correlation_heatmap.png")
 
         # Preprocess
         x_train, x_test, y_train, y_test, scaler = preprocess_and_split(cleaned_data)
 
         # Save
-        save_processed_data(x_train, x_test, y_train, y_test, processed_dir)
+        save_processed_data(x_train, x_test, y_train, y_test, output_dir)
     except Exception as e:
         logger.exception(f"An error occurred during preprocessing: {e}") #noqa: G004
