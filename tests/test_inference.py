@@ -13,12 +13,8 @@ if src_path not in sys.path:
 
 from models import MLP  # noqa: E402
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(levelname)s: %(message)s",
-)
 
 sample = pd.read_csv("../data/processed/x_test.csv").iloc[[0]]
 
