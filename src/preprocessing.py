@@ -11,7 +11,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
-
+logger.setLevel(logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s: %(message)s",
+)
 
 def load_data(file_path: str) -> pd.DataFrame:
     """Load dataset from a CSV file."""
