@@ -3,7 +3,7 @@ name = "xai-medical-diagnosis"
 version = "0.1.0"
 description = "explainable medical diagnosis project for final year"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "cython>=3.2.4",
     "dice-ml>=0.12",
