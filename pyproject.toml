@@ -3,7 +3,7 @@ name = "xai-medical-diagnosis"
 version = "0.1.0"
 description = "explainable medical diagnosis project for final year"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "cython>=3.2.4",
     "dice-ml>=0.12",
@@ -13,6 +13,7 @@ dependencies = [
     "pandas>=2.3.3",
     "pygol",
     "scikit-learn>=1.8.0",
+    "seaborn>=0.13.2",
     "shap>=0.49.1",
     "torch>=2.9.1",
     "torchvision>=0.24.1",
