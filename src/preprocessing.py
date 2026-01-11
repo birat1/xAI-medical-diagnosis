@@ -10,13 +10,13 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 def load_data(file_path: str) -> pd.DataFrame:
     """Load dataset from a CSV file."""
     if not Path(file_path).exists():
-        raise FileNotFoundError(f"The file {file_path} was not found.")
+        raise FileNotFoundError(f"The file {file_path} was not found.")  # noqa: EM102, TRY003
     data = pd.read_csv(file_path)
     logger.info(f"Data loaded successfully from {file_path}")
     return data
@@ -50,9 +50,9 @@ def perform_correlation_analysis(df: pd.DataFrame, output_path: str | None = Non
         plt.show()
 
 def preprocess_and_split(
-    df: pd.DataFrame,
-    target_col: str = "Outcome",
-    test_size: float = 0.2,
+        df: pd.DataFrame,
+        target_col: str = "Outcome",
+        test_size: float = 0.2,
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, StandardScaler]:
     """Split data into train and test sets. Scale features using StandardScaler."""
     x = df.drop(columns=[target_col])
@@ -68,11 +68,11 @@ def preprocess_and_split(
     return x_train_scaled, x_test_scaled, y_train, y_test, scaler
 
 def save_processed_data(
-    x_train: pd.DataFrame,
-    x_test: pd.DataFrame,
-    y_train: pd.Series,
-    y_test: pd.Series,
-    output_dir: str,
+        x_train: pd.DataFrame,
+        x_test: pd.DataFrame,
+        y_train: pd.Series,
+        y_test: pd.Series,
+        output_dir: str,
     ) -> None:
     """Save processed data to specified output directory."""
     output_dir = Path(output_dir)
