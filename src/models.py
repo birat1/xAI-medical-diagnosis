@@ -1,4 +1,5 @@
 """Model training module for Random Forest and MLP."""
+import json
 import logging
 import pickle
 import random
@@ -8,7 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import GridSearchCV
 from torch import nn, optim
 
@@ -19,17 +20,18 @@ DATA_DIR = Path("../data/processed")
 MODELS_DIR = Path("../models")
 MODELS_DIR.mkdir(exist_ok=True)
 
-RF_THRESHOLD = 0.3775
-MLP_THRESHOLD = 0.5781
-
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """Load preprocessed datasets."""
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
+    """Load preprocessed train/val/test datasets."""
     x_train = pd.read_csv(DATA_DIR / "x_train.csv")
-    x_test = pd.read_csv(DATA_DIR / "x_test.csv")
     y_train = pd.read_csv(DATA_DIR / "y_train.csv").to_numpy().ravel()
+
+    x_val = pd.read_csv(DATA_DIR / "x_val.csv")
+    y_val = pd.read_csv(DATA_DIR / "y_val.csv").to_numpy().ravel()
+
+    x_test = pd.read_csv(DATA_DIR / "x_test.csv")
     y_test = pd.read_csv(DATA_DIR / "y_test.csv").to_numpy().ravel()
 
-    return x_train, x_test, y_train, y_test
+    return x_train, x_val, x_test, y_train, y_val, y_test
 
 def set_seed(seed: int = 42) -> None:
     """Set random seed for reproducibility."""
@@ -42,11 +44,14 @@ def set_seed(seed: int = 42) -> None:
     torch.backends.cudnn.benchmark = False
     logger.info(f"Global seed set to {seed}")
 
-# --- Random Forest Training ---
+# --- Random Forest ---
 
-def train_rf(x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_test: pd.Series) -> None:
-    """Train a Random Forest Classifier."""
-    logger.info("Starting Random Forest training...")
+def train_rf(
+            x_train: pd.DataFrame,
+            y_train: np.ndarray,
+        ) -> RandomForestClassifier:
+    """Train a Random Forest Classifier using training data."""
+    logger.info("Starting Random Forest training with 5-Fold CV...")
 
     param_grid = {
         "n_estimators": [100, 200, 300],
@@ -56,16 +61,12 @@ def train_rf(x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_
     }
 
     rf_model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision")
+    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=-1)
     grid_search.fit(x_train, y_train)
 
     best_rf = grid_search.best_estimator_
-    preds = best_rf.predict(x_test)
-
-    logger.info(f"Best Random Forest Params: {grid_search.best_params_}")
-    logger.info(f"Random Forest Accuracy: {accuracy_score(y_test, preds):.4f}")
-    logger.info("Classification Report:")
-    logger.info(classification_report(y_test, preds))
+    logger.info(f"Best RF Parameters: {grid_search.best_params_}")
+    logger.info(f"Best RF CV Score: {grid_search.best_score_:.4f}")
 
     with (MODELS_DIR / "rf_model.pkl").open("wb") as f:
         pickle.dump(best_rf, f)
@@ -73,7 +74,7 @@ def train_rf(x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_
 
     return best_rf
 
-# --- Multi-Layer Perceptron Training ---
+# --- Multi-Layer Perceptron (MLP) ---
 
 class MLP(nn.Module):
     """Multi-Layer Perceptron for binary classification."""
@@ -86,11 +87,9 @@ class MLP(nn.Module):
             nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.Dropout(0.2),
-
             nn.Linear(32, 16),
             nn.BatchNorm1d(16),
             nn.ReLU(),
-
             nn.Linear(16, 1),
         )
 
@@ -98,97 +97,109 @@ class MLP(nn.Module):
         """Define the forward pass."""
         return self.layers(x)
 
-def train_mlp(x_train: pd.DataFrame, y_train: pd.Series, x_test: pd.DataFrame, y_test: pd.Series) -> MLP:
-    """Train a Multi-Layer Perceptron model."""
+def train_mlp(x_train: pd.DataFrame, y_train: np.ndarray, epochs: int = 200, lr: float = 1e-2) -> MLP:
+    """Train a Multi-Layer Perceptron model using Stratified K-Fold CV."""
     logger.info("Starting MLP training...")
+
+    model = MLP(x_train.shape[1])
+    optimiser = optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.BCEWithLogitsLoss()
 
     x_train_tensor = torch.tensor(x_train.values, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.float32).view(-1, 1)
-    x_test_tensor = torch.tensor(x_test.values, dtype=torch.float32)
-
-    num_neg = (y_train == 0).sum()
-    num_pos = (y_train == 1).sum()
-    pos_weight = torch.tensor([num_neg / num_pos], dtype=torch.float32)
-
-    model = MLP(x_train.shape[1])
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    optimiser = optim.Adam(model.parameters(), lr=0.01)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimiser, "min", patience=10)
 
     model.train()
-    for epoch in range(200):
+    for epoch in range(1, epochs + 1):
         optimiser.zero_grad()
-        outputs = model(x_train_tensor)
-        loss = criterion(outputs, y_train_tensor)
+        logits = model(x_train_tensor)
+        loss = criterion(logits, y_train_tensor)
         loss.backward()
         optimiser.step()
-        scheduler.step(loss.detach())
 
-        if (epoch + 1) % 50 == 0:
-            logger.info(f"Epoch [{epoch + 1}/200], Loss: {loss.item():.4f}")
-
-    model.eval()
-    with torch.no_grad():
-        test_outputs = model(x_test_tensor)
-        preds = (test_outputs > 0.5).float().numpy()  # noqa: PLR2004
-        logger.info(f"MLP Test Accuracy: {accuracy_score(y_test, preds):.4f}")
+        if epoch % 50 == 0:
+            logger.info(f"Epoch [{epoch}/{epochs}], Loss: {loss.item():.4f}")
 
     torch.save(model.state_dict(), MODELS_DIR / "mlp_model.pth")
-    logger.info(f"MLP saved to {MODELS_DIR / 'mlp_model.pth'}")
+    logger.info("MLP model saved to ../models/mlp_model.pth")
 
     return model
 
-def evaluate_model_performance(
-        model: nn.Module,
-        x_test: pd.DataFrame,
-        y_test: pd.Series,
-        threshold: float,
-        is_pytorch: bool = False,  # noqa: FBT001, FBT002
-    ) -> float:
-    """Evaluate model performance using a specified threshold."""
+# Evaluation helpers
+
+def predict_probs(model: nn.Module, x: pd.DataFrame, is_pytorch: bool) -> np.ndarray:
+    """Predict probabilities using the given model."""
     if is_pytorch:
         model.eval()
         with torch.no_grad():
-            logits = model(torch.tensor(x_test.values, dtype=torch.float32))
-            probs = torch.sigmoid(logits).numpy().ravel()
-    else:
-        probs = model.predict_proba(x_test)[:, 1]
+            logits = model(torch.tensor(x.values, dtype=torch.float32))
+            return torch.sigmoid(logits).numpy().ravel()
+    return model.predict_proba(x)[:, 1]
 
+def evaluate(y_true: np.ndarray, probs: np.ndarray, threshold: float) -> tuple[float, str]:
+    """Evaluate model performance at a given threshold."""
     preds = (probs >= threshold).astype(int)
+    return float(f1_score(y_true, preds)), classification_report(y_true, preds)
 
-    report = classification_report(y_test, preds)
-    f1 = f1_score(y_test, preds)
-    return f1, report
+def load_thresholds() -> dict[str, float] | None:
+    """Load optimal thresholds from JSON file."""
+    if not (MODELS_DIR / "thresholds.json").exists():
+        return None
+    with (MODELS_DIR / "thresholds.json").open("r") as f:
+        data = json.load(f)
+        # expected keys: rf_threshold, mlp_threshold
+    if "rf_threshold" in data and "mlp_threshold" in data:
+        return {"rf": float(data["rf_threshold"]), "mlp": float(data["mlp_threshold"])}
+    return None
 
 if __name__ == "__main__":
     set_seed(42)
     try:
-        x_train, x_test, y_train, y_test = load_data()
+        x_train, x_val, x_test, y_train, y_val, y_test = load_data()
 
-        rf_model = train_rf(x_train, x_test, y_train, y_test)
+        # Train models using training data only
+        rf_model = train_rf(x_train, y_train)
         logger.info("-" * 50)
-        mlp_model = train_mlp(x_train, y_train, x_test, y_test)
+        mlp_model = train_mlp(x_train, y_train)
         logger.info("-" * 50)
 
-        rf_f1, rf_report = evaluate_model_performance(
-                                                    rf_model,
-                                                    x_test,
-                                                    y_test,
-                                                    threshold=RF_THRESHOLD,
-                                                    is_pytorch=False,
-                                                    )
-        mlp_f1, mlp_report = evaluate_model_performance(
-                                                    mlp_model,
-                                                    x_test,
-                                                    y_test,
-                                                    threshold=MLP_THRESHOLD,
-                                                    is_pytorch=True,
-                                                    )
+        rf_val_probs = predict_probs(rf_model, x_val, is_pytorch=False)
+        mlp_val_probs = predict_probs(mlp_model, x_val, is_pytorch=True)
+        rf_test_probs = predict_probs(rf_model, x_test, is_pytorch=False)
+        mlp_test_probs = predict_probs(mlp_model, x_test, is_pytorch=True)
 
-        logger.info(f"Random Forest F1 Score: {rf_f1:.4f}")
-        logger.info(rf_report)
-        logger.info(f"MLP F1 Score: {mlp_f1:.4f}")
-        logger.info(mlp_report)
+        rf_val_f1, rf_val_rep = evaluate(y_val, rf_val_probs, threshold=0.5)
+        mlp_val_f1, mlp_val_rep = evaluate(y_val, mlp_val_probs, threshold=0.5)
+
+        logger.info("Validation (threshold=0.5)")
+        logger.info(f"RF F1: {rf_val_f1:.4f}")
+        logger.info(rf_val_rep)
+        logger.info(f"MLP F1: {mlp_val_f1:.4f}")
+        logger.info(mlp_val_rep)
+        logger.info("-" * 50)
+
+        rf_test_f1, rf_test_rep = evaluate(y_test, rf_test_probs, threshold=0.5)
+        mlp_test_f1, mlp_test_rep = evaluate(y_test, mlp_test_probs, threshold=0.5)
+
+        logger.info("Test (threshold=0.5)")
+        logger.info(f"RF F1: {rf_test_f1:.4f}")
+        logger.info(rf_test_rep)
+        logger.info(f"MLP F1: {mlp_test_f1:.4f}")
+        logger.info(mlp_test_rep)
+        logger.info("-" * 50)
+
+        thresholds = load_thresholds()
+        if thresholds is not None:
+            logger.info("Test (tuned thresholds from thresholds.json)")
+
+            rf_tuned_f1, rf_tuned_rep = evaluate(y_test, rf_test_probs, threshold=thresholds["rf"])
+            mlp_tuned_f1, mlp_tuned_rep = evaluate(y_test, mlp_test_probs, threshold=thresholds["mlp"])
+
+            logger.info(f"RF F1 @ {thresholds['rf']:.4f}: {rf_tuned_f1:.4f}")
+            logger.info(rf_tuned_rep)
+            logger.info(f"MLP F1 @ {thresholds['mlp']:.4f}: {mlp_tuned_f1:.4f}")
+            logger.info(mlp_tuned_rep)
+        else:
+            logger.info("-" * 50)
+            logger.info("No tuned thresholds found. Please run optimise_threshold.py first.")
     except Exception as e:
         logger.exception(f"An error occurred during training: {e}")
-
