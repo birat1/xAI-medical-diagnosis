@@ -1,0 +1,7 @@
+{
+    "rf_threshold": 0.5339724674534994,
+    "mlp_threshold": 0.42661887407302856,
+    "rf_best_f1": 0.7294117646558893,
+    "mlp_best_f1": 0.688172042961036,
+    "tuned_on": "validation"
+}

@@ -1,4 +1,5 @@
 """Optimise thresholds for classification models to maximise F1-Score."""
+import json
 import logging
 import pickle
 from pathlib import Path
@@ -7,59 +8,103 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import classification_report, f1_score, precision_recall_curve
 
 from models import MLP
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
+DATA_DIR = Path("../data/processed")
+MODELS_DIR = Path("../models")
+
 def find_optimal_threshold(
         y_true: np.ndarray,
         y_probs: np.ndarray,
         model_name: str = "Model",
-    ) -> tuple[float, np.ndarray, np.ndarray]:
-    """Find and plot the threshold that maximises the F1-Score."""
+    ) -> tuple[float, np.ndarray, np.ndarray, float]:
+    """Find threshold that maximises the F1-Score."""
     precision, recall, thresholds = precision_recall_curve(y_true, y_probs)
 
     f1_scores = 2 * (precision * recall) / (precision + recall + 1e-10)
 
-    best_idx = np.argmax(f1_scores[:-1])
-    best_threshold = thresholds[best_idx]
-    best_f1 = f1_scores[best_idx]
+    best_idx = int(np.argmax(f1_scores[:-1]))
+    best_threshold = float(thresholds[best_idx])
+    best_f1 = float(f1_scores[best_idx])
 
-    logger.info(f"\n--- {model_name} Optimisation ---")
+    logger.info(f"\n--- {model_name} Optimisation (VALIDATION) ---")
     logger.info(f"Optimal Threshold: {best_threshold:.4f}")
     logger.info(f"Max F1-Score at this threshold: {best_f1:.4f}")
 
-    return best_threshold, thresholds, f1_scores[:-1]
-
-x_test = pd.read_csv("../data/processed/x_test.csv")
-y_test = pd.read_csv("../data/processed/y_test.csv").to_numpy().ravel()
+    return best_threshold, thresholds, f1_scores[:-1], best_f1
 
 # Random Forest
-with Path("../models/rf_model.pkl").open("rb") as f:
-    rf_model = pickle.load(f)
-rf_probs = rf_model.predict_proba(x_test)[:, 1]
-rf_thresh, rf_ts, rf_f1s = find_optimal_threshold(y_test, rf_probs, "Random Forest")
+def predict_rf_probs(x: pd.DataFrame) -> np.ndarray:
+    with (MODELS_DIR / "rf_model.pkl").open("rb") as f:
+        rf_model = pickle.load(f)
+    return rf_model.predict_proba(x)[:, 1]
 
 # MLP
-mlp = MLP(x_test.shape[1])
-mlp.load_state_dict(torch.load("../models/mlp_model.pth"))
-mlp.eval()
-with torch.no_grad():
-    logits = mlp(torch.tensor(x_test.values, dtype=torch.float32))
-    mlp_probs = torch.sigmoid(logits).numpy().ravel()
-mlp_thresh, mlp_ts, mlp_f1s = find_optimal_threshold(y_test, mlp_probs, "MLP")
+def predict_mlp_probs(x: pd.DataFrame) -> np.ndarray:
+    mlp = MLP(x.shape[1])
+    state = torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True)
+    mlp.load_state_dict(state)
+    mlp.eval()
+    with torch.no_grad():
+        logits = mlp(torch.tensor(x.values, dtype=torch.float32))
+        return torch.sigmoid(logits).numpy().ravel()
 
-# Visualisation
-plt.figure(figsize=(10, 5))
-plt.plot(rf_ts, rf_f1s, label=f"RF (Best Thresh: {rf_thresh:.2f})")
-plt.plot(mlp_ts, mlp_f1s, label=f"MLP (Best Thresh: {mlp_thresh:.2f})")
-plt.axvline(0.5, color="red", linestyle="--", label="Default 0.5")
-plt.xlabel("Threshold")
-plt.ylabel("F1-Score")
-plt.title("Threshold Optimisation for F1-Score")
-plt.legend()
-plt.savefig("../models/threshold_optimisation.png")
-logger.info("\nPlot saved to ../models/threshold_optimisation.png")
+#
+def evaluate_threshold(y_true: np.ndarray, probs: np.ndarray, threshold: float, name: str) -> None:
+    preds = (probs >= threshold).astype(int)
+    logger.info(f"\n--- {name} Evaluation at threshold {threshold:.4f} ---")
+    logger.info(f"F1-Score: {f1_score(y_true, preds):.4f}")
+    logger.info(classification_report(y_true, preds))
+
+if __name__ == "__main__":
+    # Load Validation Set
+    x_val_path = DATA_DIR / "x_val.csv"
+    y_val_path = DATA_DIR / "y_val.csv"
+    if not x_val_path.exists() or not y_val_path.exists():
+        raise FileNotFoundError("Validation data not found. Please run preprocessing first.")  # noqa: EM101, TRY003
+
+    x_val = pd.read_csv(x_val_path)
+    y_val = pd.read_csv(y_val_path).to_numpy().ravel()
+
+    # Tune thresholds
+    rf_val_probs = predict_rf_probs(x_val)
+    rf_thresh, rf_ts, rf_f1s, rf_best_f1 = find_optimal_threshold(y_val, rf_val_probs, model_name="Random Forest")
+
+    mlp_val_probs = predict_mlp_probs(x_val)
+    mlp_thresh, mlp_ts, mlp_f1s, mlp_best_f1 = find_optimal_threshold(y_val, mlp_val_probs, model_name="MLP")
+
+    # Save thresholds
+    thresholds = {
+        "rf_threshold": rf_thresh,
+        "mlp_threshold": mlp_thresh,
+        "rf_best_f1": rf_best_f1,
+        "mlp_best_f1": mlp_best_f1,
+        "tuned_on": "validation",
+    }
+    with (MODELS_DIR / "thresholds.json").open("w") as f:
+        json.dump(thresholds, f, indent=4)
+    logger.info(f"\nOptimal thresholds saved to {MODELS_DIR / 'thresholds.json'}")
+
+    # Visualisation
+    plt.figure(figsize=(10, 5))
+    plt.plot(rf_ts, rf_f1s, label=f"RF (best={rf_thresh:.2f})")
+    plt.plot(mlp_ts, mlp_f1s, label=f"MLP (best={mlp_thresh:.2f})")
+    plt.axvline(0.5, color="red", linestyle="--", label="Default 0.5")
+    plt.xlabel("Threshold")
+    plt.ylabel("F1-Score")
+    plt.title("Threshold Optimisation on Validation Set")
+    plt.legend()
+    plt.savefig(MODELS_DIR / "threshold_optimisation_val.png", bbox_inches="tight")
+    logger.info(f"\nPlot saved to {MODELS_DIR / 'threshold_optimisation_val.png'}")
+
+    # Evaluate on Test Set
+    x_test = pd.read_csv(DATA_DIR / "x_test.csv")
+    y_test = pd.read_csv(DATA_DIR / "y_test.csv").to_numpy().ravel()
+
+    evaluate_threshold(y_test, predict_rf_probs(x_test), rf_thresh, "Random Forest (Test)")
+    evaluate_threshold(y_test, predict_mlp_probs(x_test), mlp_thresh, "MLP (Test)")
