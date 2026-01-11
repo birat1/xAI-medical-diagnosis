@@ -22,15 +22,13 @@ def find_optimal_threshold(
     """Find and plot the threshold that maximises the F1-Score."""
     precision, recall, thresholds = precision_recall_curve(y_true, y_probs)
 
-    # Calculate F1-score for each threshold
     f1_scores = 2 * (precision * recall) / (precision + recall + 1e-10)
 
-    # Locate the index of the highest F1-score (excluding the last PR point)
     best_idx = np.argmax(f1_scores[:-1])
     best_threshold = thresholds[best_idx]
     best_f1 = f1_scores[best_idx]
 
-    logger.info(f"\n--- {model_name} Optimization ---")
+    logger.info(f"\n--- {model_name} Optimisation ---")
     logger.info(f"Optimal Threshold: {best_threshold:.4f}")
     logger.info(f"Max F1-Score at this threshold: {best_f1:.4f}")
 
@@ -61,7 +59,7 @@ plt.plot(mlp_ts, mlp_f1s, label=f"MLP (Best Thresh: {mlp_thresh:.2f})")
 plt.axvline(0.5, color="red", linestyle="--", label="Default 0.5")
 plt.xlabel("Threshold")
 plt.ylabel("F1-Score")
-plt.title("Threshold Optimization for F1-Score")
+plt.title("Threshold Optimisation for F1-Score")
 plt.legend()
-plt.savefig("../models/threshold_optimization.png")
-logger.info("\nPlot saved to ../models/threshold_optimization.png")
+plt.savefig("../models/threshold_optimisation.png")
+logger.info("\nPlot saved to ../models/threshold_optimisation.png")
