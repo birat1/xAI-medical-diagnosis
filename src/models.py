@@ -3,14 +3,15 @@ import logging
 import pickle
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import torch
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, average_precision_score, classification_report, precision_recall_curve
 from sklearn.model_selection import GridSearchCV
 from torch import nn, optim
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path("../data/processed")
@@ -33,14 +34,14 @@ def train_rf(x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_
     logger.info("Starting Random Forest training...")
 
     param_grid = {
-        "n_estimators": [100, 200],
-        "max_depth": [None, 10, 20],
-        "min_samples_split": [2, 5],
-        "class_weight": ["balanced", None],
+        "n_estimators": [100, 200, 300],
+        "max_depth": [None, 10, 15],
+        "min_samples_leaf": [1, 2, 4],
+        "class_weight": ["balanced", "balanced_subsample"],
     }
 
     rf_model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="f1")
+    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision")
     grid_search.fit(x_train, y_train)
 
     best_rf = grid_search.best_estimator_
@@ -54,6 +55,7 @@ def train_rf(x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_
     with (MODELS_DIR / "rf_model.pkl").open("wb") as f:
         pickle.dump(best_rf, f)
     logger.info("Random Forest model saved to ../models/rf_model.pkl")
+
     return best_rf
 
 # --- Multi-Layer Perceptron Training ---
@@ -75,7 +77,6 @@ class MLP(nn.Module):
             nn.ReLU(),
 
             nn.Linear(16, 1),
-            nn.Sigmoid(),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -90,8 +91,12 @@ def train_mlp(x_train: pd.DataFrame, y_train: pd.Series, x_test: pd.DataFrame, y
     y_train_tensor = torch.tensor(y_train, dtype=torch.float32).view(-1, 1)
     x_test_tensor = torch.tensor(x_test.values, dtype=torch.float32)
 
+    num_neg = (y_train == 0).sum()
+    num_pos = (y_train == 1).sum()
+    pos_weight = torch.tensor([num_neg / num_pos], dtype=torch.float32)
+
     model = MLP(x_train.shape[1])
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimiser = optim.Adam(model.parameters(), lr=0.01)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimiser, "min", patience=10)
 
@@ -118,13 +123,34 @@ def train_mlp(x_train: pd.DataFrame, y_train: pd.Series, x_test: pd.DataFrame, y
 
     return model
 
+def evaluate_auprc(model: nn.Module, x_test: pd.DataFrame, y_test: pd.Series, is_pytorch: bool = False) -> float:
+    """Get AUPRC score for the model."""
+    if is_pytorch:
+        model.eval()
+        with torch.no_grad():
+            logits = model(torch.tensor(x_test.values, dtype=torch.float32))
+            probs = torch.sigmoid(logits).numpy().ravel()
+    else:
+        probs = model.predict_proba(x_test)[:, 1]
+
+    score = average_precision_score(y_test, probs)
+    return score  # noqa: RET504
+
 if __name__ == "__main__":
     try:
         x_train, x_test, y_train, y_test = load_data()
 
-        train_rf(x_train, x_test, y_train, y_test)
-        logger.info("-" * 30)
-        train_mlp(x_train, y_train, x_test, y_test)
+        rf_model = train_rf(x_train, x_test, y_train, y_test)
+        logger.info("-" * 50)
+        mlp_model = train_mlp(x_train, y_train, x_test, y_test)
+        logger.info("-" * 50)
+
+        rf_auprc = evaluate_auprc(rf_model, x_test, y_test, is_pytorch=False)
+        mlp_auprc = evaluate_auprc(mlp_model, x_test, y_test, is_pytorch=True)
+
+        logger.info(f"Random Forest AUPRC: {rf_auprc:.4f}")
+        logger.info(f"MLP AUPRC: {mlp_auprc:.4f}")
+
     except Exception as e:
         logger.exception(f"An error occurred during training: {e}")
 
