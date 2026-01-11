@@ -1,13 +1,14 @@
 """Model training module for Random Forest and MLP."""
 import logging
 import pickle
+import random
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, average_precision_score, classification_report, precision_recall_curve
+from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.model_selection import GridSearchCV
 from torch import nn, optim
 
@@ -18,6 +19,9 @@ DATA_DIR = Path("../data/processed")
 MODELS_DIR = Path("../models")
 MODELS_DIR.mkdir(exist_ok=True)
 
+RF_THRESHOLD = 0.3775
+MLP_THRESHOLD = 0.5781
+
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """Load preprocessed datasets."""
     x_train = pd.read_csv(DATA_DIR / "x_train.csv")
@@ -26,6 +30,17 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     y_test = pd.read_csv(DATA_DIR / "y_test.csv").to_numpy().ravel()
 
     return x_train, x_test, y_train, y_test
+
+def set_seed(seed: int = 42) -> None:
+    """Set random seed for reproducibility."""
+    random.seed(seed)
+    np.random.default_rng(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    logger.info(f"Global seed set to {seed}")
 
 # --- Random Forest Training ---
 
@@ -115,7 +130,7 @@ def train_mlp(x_train: pd.DataFrame, y_train: pd.Series, x_test: pd.DataFrame, y
     model.eval()
     with torch.no_grad():
         test_outputs = model(x_test_tensor)
-        preds = (test_outputs > 0.5).float().numpy()
+        preds = (test_outputs > 0.5).float().numpy()  # noqa: PLR2004
         logger.info(f"MLP Test Accuracy: {accuracy_score(y_test, preds):.4f}")
 
     torch.save(model.state_dict(), MODELS_DIR / "mlp_model.pth")
@@ -123,8 +138,14 @@ def train_mlp(x_train: pd.DataFrame, y_train: pd.Series, x_test: pd.DataFrame, y
 
     return model
 
-def evaluate_auprc(model: nn.Module, x_test: pd.DataFrame, y_test: pd.Series, is_pytorch: bool = False) -> float:
-    """Get AUPRC score for the model."""
+def evaluate_model_performance(
+        model: nn.Module,
+        x_test: pd.DataFrame,
+        y_test: pd.Series,
+        threshold: float,
+        is_pytorch: bool = False,  # noqa: FBT001, FBT002
+    ) -> float:
+    """Evaluate model performance using a specified threshold."""
     if is_pytorch:
         model.eval()
         with torch.no_grad():
@@ -133,10 +154,14 @@ def evaluate_auprc(model: nn.Module, x_test: pd.DataFrame, y_test: pd.Series, is
     else:
         probs = model.predict_proba(x_test)[:, 1]
 
-    score = average_precision_score(y_test, probs)
-    return score  # noqa: RET504
+    preds = (probs >= threshold).astype(int)
+
+    report = classification_report(y_test, preds)
+    f1 = f1_score(y_test, preds)
+    return f1, report
 
 if __name__ == "__main__":
+    set_seed(42)
     try:
         x_train, x_test, y_train, y_test = load_data()
 
@@ -145,12 +170,25 @@ if __name__ == "__main__":
         mlp_model = train_mlp(x_train, y_train, x_test, y_test)
         logger.info("-" * 50)
 
-        rf_auprc = evaluate_auprc(rf_model, x_test, y_test, is_pytorch=False)
-        mlp_auprc = evaluate_auprc(mlp_model, x_test, y_test, is_pytorch=True)
+        rf_f1, rf_report = evaluate_model_performance(
+                                                    rf_model,
+                                                    x_test,
+                                                    y_test,
+                                                    threshold=RF_THRESHOLD,
+                                                    is_pytorch=False,
+                                                    )
+        mlp_f1, mlp_report = evaluate_model_performance(
+                                                    mlp_model,
+                                                    x_test,
+                                                    y_test,
+                                                    threshold=MLP_THRESHOLD,
+                                                    is_pytorch=True,
+                                                    )
 
-        logger.info(f"Random Forest AUPRC: {rf_auprc:.4f}")
-        logger.info(f"MLP AUPRC: {mlp_auprc:.4f}")
-
+        logger.info(f"Random Forest F1 Score: {rf_f1:.4f}")
+        logger.info(rf_report)
+        logger.info(f"MLP F1 Score: {mlp_f1:.4f}")
+        logger.info(mlp_report)
     except Exception as e:
         logger.exception(f"An error occurred during training: {e}")
 

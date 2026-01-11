@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 RF_THRESHOLD = 0.3775
-MLP_THRESHOLD = 0.4173
+MLP_THRESHOLD = 0.5781
 
 try:
     sample = pd.read_csv("../data/processed/x_test.csv").iloc[[0]]
