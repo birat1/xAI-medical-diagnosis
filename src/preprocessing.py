@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 def load_data(file_path: str) -> pd.DataFrame:
     """Load dataset from a CSV file."""
     if not Path(file_path).exists():
-        raise FileNotFoundError(f"The file {file_path} was not found.")  # noqa: EM102, TRY003
+        raise FileNotFoundError(f"The file {file_path} was not found.")
     data = pd.read_csv(file_path)
-    logger.info(f"Data loaded successfully from {file_path}")  # noqa: G004
+    logger.info(f"Data loaded successfully from {file_path}")
     return data
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -45,7 +45,7 @@ def perform_correlation_analysis(df: pd.DataFrame, output_path: str | None = Non
 
     if output_path:
         plt.savefig(output_path)
-        logger.info(f"Correlation heatmap saved to {output_path}")  # noqa: G004
+        logger.info(f"Correlation heatmap saved to {output_path}")
     else:
         plt.show()
 
@@ -64,7 +64,7 @@ def preprocess_and_split(
     x_train_scaled = pd.DataFrame(scaler.fit_transform(x_train), columns=x_train.columns)
     x_test_scaled = pd.DataFrame(scaler.transform(x_test), columns=x_test.columns)
 
-    logger.info(f"Completed data splitting and scaling. Train size: {len(x_train)}, Test size: {len(x_test)}")  # noqa: G004
+    logger.info(f"Completed data splitting and scaling. Train size: {len(x_train)}, Test size: {len(x_test)}")
     return x_train_scaled, x_test_scaled, y_train, y_test, scaler
 
 def save_processed_data(
@@ -83,7 +83,7 @@ def save_processed_data(
     x_test.to_csv(output_dir / "x_test.csv", index=False)
     y_train.to_csv(output_dir / "y_train.csv", index=False)
     y_test.to_csv(output_dir / "y_test.csv", index=False)
-    logger.info(f"Processed data saved to {output_dir}")  # noqa: G004
+    logger.info(f"Processed data saved to {output_dir}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Data Preprocessing Module")
@@ -117,4 +117,4 @@ if __name__ == "__main__":
         # Save
         save_processed_data(x_train, x_test, y_train, y_test, output_dir)
     except Exception as e:
-        logger.exception(f"An error occurred during preprocessing: {e}") #noqa: G004
+        logger.exception(f"An error occurred during preprocessing: {e}")

@@ -21,7 +21,7 @@ sample = pd.read_csv("../data/processed/x_test.csv").iloc[[0]]
 # Test Random Forest
 with Path("../models/rf_model.pkl").open("rb") as f:
     rf_model = pickle.load(f)
-    logger.info(f"RF Prediction: {rf_model.predict(sample)}")  # noqa: G004
+    logger.info(f"RF Prediction: {rf_model.predict(sample)}")
 
 # Test MLP
 model = MLP(sample.shape[1])
@@ -30,4 +30,4 @@ model.eval()
 with torch.no_grad():
     sample_tensor = torch.tensor(sample.values, dtype=torch.float32)
     prediction = model(sample_tensor)
-    logger.info(f"MLP Prediction: {prediction.item():.4f}")  # noqa: G004
+    logger.info(f"MLP Prediction: {prediction.item():.4f}")

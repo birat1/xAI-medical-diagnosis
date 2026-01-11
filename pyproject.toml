@@ -29,6 +29,10 @@ line-length = 120
 select = [
     "ALL",
 ]
+ignore = [
+    "G004", # Allow f-strings in logging
+    "S301", # Allow pickle for trusted local data
+]
 
 [tool.uv.sources]
 pygol = { git = "https://github.com/danyvarghese/PyGol.git", rev = "main" }

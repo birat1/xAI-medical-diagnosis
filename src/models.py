@@ -46,8 +46,8 @@ def train_rf(x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_
     best_rf = grid_search.best_estimator_
     preds = best_rf.predict(x_test)
 
-    logger.info(f"Best Random Forest Params: {grid_search.best_params_}") # noqa: G004
-    logger.info(f"Random Forest Accuracy: {accuracy_score(y_test, preds):.4f}")  # noqa: G004
+    logger.info(f"Best Random Forest Params: {grid_search.best_params_}")
+    logger.info(f"Random Forest Accuracy: {accuracy_score(y_test, preds):.4f}")
     logger.info("Classification Report:")
     logger.info(classification_report(y_test, preds))
 
@@ -105,16 +105,16 @@ def train_mlp(x_train: pd.DataFrame, y_train: pd.Series, x_test: pd.DataFrame, y
         scheduler.step(loss.detach())
 
         if (epoch + 1) % 50 == 0:
-            logger.info(f"Epoch [{epoch + 1}/200], Loss: {loss.item():.4f}")  # noqa: G004
+            logger.info(f"Epoch [{epoch + 1}/200], Loss: {loss.item():.4f}")
 
     model.eval()
     with torch.no_grad():
         test_outputs = model(x_test_tensor)
         preds = (test_outputs > 0.5).float().numpy()
-        logger.info(f"MLP Test Accuracy: {accuracy_score(y_test, preds):.4f}")  # noqa: G004
+        logger.info(f"MLP Test Accuracy: {accuracy_score(y_test, preds):.4f}")
 
     torch.save(model.state_dict(), MODELS_DIR / "mlp_model.pth")
-    logger.info(f"MLP saved to {MODELS_DIR / 'mlp_model.pth'}")  # noqa: G004
+    logger.info(f"MLP saved to {MODELS_DIR / 'mlp_model.pth'}")
 
     return model
 
@@ -126,5 +126,5 @@ if __name__ == "__main__":
         logger.info("-" * 30)
         train_mlp(x_train, y_train, x_test, y_test)
     except Exception as e:
-        logger.exception(f"An error occurred during training: {e}")  # noqa: G004
+        logger.exception(f"An error occurred during training: {e}")
 
