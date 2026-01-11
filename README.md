@@ -4,7 +4,18 @@ Project repository for my final year dissertation.
 
 ## Usage
 
-1. uv run preprocessing.py --input [../data/raw/diabetes.csv] --output [../data/processed]
-2. uv run models.py
-3. uv run optimise_threshold.py
-4. uv run evaluate_models.py
+```py
+uv run preprocessing.py --input [../data/raw/diabetes.csv] --output [../data/processed]
+```
+
+```py
+uv run models.py
+```
+
+```py
+uv run optimise_threshold.py
+```
+
+```py
+uv run evaluate_models.py
+```
