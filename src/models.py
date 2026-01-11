@@ -65,12 +65,12 @@ def train_rf(
     grid_search.fit(x_train, y_train)
 
     best_rf = grid_search.best_estimator_
-    logger.info(f"Best RF Parameters: {grid_search.best_params_}")
-    logger.info(f"Best RF CV Score: {grid_search.best_score_:.4f}")
+    logger.info(f"Best Random Forest Parameters: {grid_search.best_params_}")
+    logger.info(f"Best Random Forest CV Score: {grid_search.best_score_:.4f}")
 
     with (MODELS_DIR / "rf_model.pkl").open("wb") as f:
         pickle.dump(best_rf, f)
-    logger.info("Random Forest model saved to ../models/rf_model.pkl")
+    logger.info("RF model saved to ../models/rf_model.pkl")
 
     return best_rf
 
@@ -170,33 +170,33 @@ if __name__ == "__main__":
         rf_val_f1, rf_val_rep = evaluate(y_val, rf_val_probs, threshold=0.5)
         mlp_val_f1, mlp_val_rep = evaluate(y_val, mlp_val_probs, threshold=0.5)
 
-        logger.info("Validation (threshold=0.5)")
-        logger.info(f"RF F1: {rf_val_f1:.4f}")
+        logger.info("Validation Set (threshold=0.5)")
+        logger.info(f"Random Forest F1: {rf_val_f1:.4f}")
         logger.info(rf_val_rep)
-        logger.info(f"MLP F1: {mlp_val_f1:.4f}")
+        logger.info(f"Multi-Layer Perceptron F1: {mlp_val_f1:.4f}")
         logger.info(mlp_val_rep)
         logger.info("-" * 50)
 
         rf_test_f1, rf_test_rep = evaluate(y_test, rf_test_probs, threshold=0.5)
         mlp_test_f1, mlp_test_rep = evaluate(y_test, mlp_test_probs, threshold=0.5)
 
-        logger.info("Test (threshold=0.5)")
-        logger.info(f"RF F1: {rf_test_f1:.4f}")
+        logger.info("Test Set (threshold=0.5)")
+        logger.info(f"Random Forest F1: {rf_test_f1:.4f}")
         logger.info(rf_test_rep)
-        logger.info(f"MLP F1: {mlp_test_f1:.4f}")
+        logger.info(f"Multi-Layer Perceptron F1: {mlp_test_f1:.4f}")
         logger.info(mlp_test_rep)
         logger.info("-" * 50)
 
         thresholds = load_thresholds()
         if thresholds is not None:
-            logger.info("Test (tuned thresholds from thresholds.json)")
+            logger.info("Test Set (tuned thresholds from thresholds.json)")
 
             rf_tuned_f1, rf_tuned_rep = evaluate(y_test, rf_test_probs, threshold=thresholds["rf"])
             mlp_tuned_f1, mlp_tuned_rep = evaluate(y_test, mlp_test_probs, threshold=thresholds["mlp"])
 
-            logger.info(f"RF F1 @ {thresholds['rf']:.4f}: {rf_tuned_f1:.4f}")
+            logger.info(f"Random Forest F1 (threshold={thresholds['rf']:.4f}): {rf_tuned_f1:.4f}")
             logger.info(rf_tuned_rep)
-            logger.info(f"MLP F1 @ {thresholds['mlp']:.4f}: {mlp_tuned_f1:.4f}")
+            logger.info(f"Multi-Layer Perceptron F1 (threshold={thresholds['mlp']:.4f}): {mlp_tuned_f1:.4f}")
             logger.info(mlp_tuned_rep)
         else:
             logger.info("-" * 50)

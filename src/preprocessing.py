@@ -63,12 +63,12 @@ def apply_imputer_medians(x: pd.DataFrame, medians: dict[str, float]) -> pd.Data
             x[col] = x[col].fillna(med)
     return x
 
-def preprocess_and_split(
+def preprocess_and_split(  # noqa: PLR0913
         df: pd.DataFrame,
         target_col: str = "Outcome",
         test_size: float = 0.2,
         val_size: float = 0.2,
-        make_val: bool = True,
+        make_val: bool = True,  # noqa: FBT001, FBT002
         seed: int = 42,
     ) -> dict[str, Any]:
     """Split data into train and test sets."""
@@ -79,7 +79,7 @@ def preprocess_and_split(
     y = df[target_col].astype(int)
 
     x_train_full, x_test, y_train_full, y_test = train_test_split(
-        x, y, test_size=test_size, random_state=seed, stratify=y
+        x, y, test_size=test_size, random_state=seed, stratify=y,
     )
 
     if make_val:
@@ -118,7 +118,7 @@ def preprocess_and_split(
         "Completed preprocessing.\n"
         f"Train size: {len(x_train_scaled)} | "
         f"Val size: {len(x_val_scaled) if x_val_scaled is not None else 0} | "
-        f"Test size: {len(x_test_scaled)}"
+        f"Test size: {len(x_test_scaled)}"  # noqa: COM812
     )
 
     artifacts = {

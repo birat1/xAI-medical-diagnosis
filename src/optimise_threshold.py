@@ -40,12 +40,14 @@ def find_optimal_threshold(
 
 # Random Forest
 def predict_rf_probs(x: pd.DataFrame) -> np.ndarray:
+    """Predict probabilities using the saved Random Forest model."""
     with (MODELS_DIR / "rf_model.pkl").open("rb") as f:
         rf_model = pickle.load(f)
     return rf_model.predict_proba(x)[:, 1]
 
 # MLP
 def predict_mlp_probs(x: pd.DataFrame) -> np.ndarray:
+    """Predict probabilities using the saved MLP model."""
     mlp = MLP(x.shape[1])
     state = torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True)
     mlp.load_state_dict(state)
@@ -54,10 +56,11 @@ def predict_mlp_probs(x: pd.DataFrame) -> np.ndarray:
         logits = mlp(torch.tensor(x.values, dtype=torch.float32))
         return torch.sigmoid(logits).numpy().ravel()
 
-#
+# Evaluation
 def evaluate_threshold(y_true: np.ndarray, probs: np.ndarray, threshold: float, name: str) -> None:
+    """Evaluate model performance at a given threshold."""
     preds = (probs >= threshold).astype(int)
-    logger.info(f"\n--- {name} Evaluation at threshold {threshold:.4f} ---")
+    logger.info(f"\n--- {name} Evaluation (threshold {threshold:.4f}) ---")
     logger.info(f"F1-Score: {f1_score(y_true, preds):.4f}")
     logger.info(classification_report(y_true, preds))
 
@@ -76,7 +79,7 @@ if __name__ == "__main__":
     rf_thresh, rf_ts, rf_f1s, rf_best_f1 = find_optimal_threshold(y_val, rf_val_probs, model_name="Random Forest")
 
     mlp_val_probs = predict_mlp_probs(x_val)
-    mlp_thresh, mlp_ts, mlp_f1s, mlp_best_f1 = find_optimal_threshold(y_val, mlp_val_probs, model_name="MLP")
+    mlp_thresh, mlp_ts, mlp_f1s, mlp_best_f1 = find_optimal_threshold(y_val, mlp_val_probs, model_name="Multi-Layer Perceptron")
 
     # Save thresholds
     thresholds = {
@@ -107,4 +110,4 @@ if __name__ == "__main__":
     y_test = pd.read_csv(DATA_DIR / "y_test.csv").to_numpy().ravel()
 
     evaluate_threshold(y_test, predict_rf_probs(x_test), rf_thresh, "Random Forest (Test)")
-    evaluate_threshold(y_test, predict_mlp_probs(x_test), mlp_thresh, "MLP (Test)")
+    evaluate_threshold(y_test, predict_mlp_probs(x_test), mlp_thresh, "Multi-Layer Perceptron (Test)")
