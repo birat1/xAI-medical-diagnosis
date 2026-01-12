@@ -19,6 +19,8 @@ uv sync
 
 ## Usage
 
+###
+
 #### Preprocessing
 
 ```py
@@ -37,19 +39,18 @@ uv run models.py
 uv run optimise_threshold.py
 ```
 
-#### Final Evaluation
+#### Model Evaluation
 
 ```py
 uv run evaluate_models.py
 ```
 
+#### Interpret
+
+```py
+uv run interpretability.py
+```
+
 ## Results
 
-Final metrics from model evaluation are saved to `models/test_evaluation_results.json`  
-
-Metrics cover:
-
-- **F1-Score**
-- **AUPRC**
-- **Precision**
-- **Recall**
+Results are stored in the [results](https://github.com/birat1/xAI-medical-diagnosis/tree/master/results) folder.
