@@ -98,7 +98,7 @@ class MLP(nn.Module):
         return self.layers(x)
 
 def train_mlp(x_train: pd.DataFrame, y_train: np.ndarray, epochs: int = 200, lr: float = 1e-2) -> MLP:
-    """Train a Multi-Layer Perceptron model using Stratified K-Fold CV."""
+    """Train a Multi-Layer Perceptron model using training data."""
     logger.info("Starting MLP training...")
 
     model = MLP(x_train.shape[1])
