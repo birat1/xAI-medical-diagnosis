@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = Path("../data/processed")
 MODELS_DIR = Path("../models")
+METRICS_DIR = Path("../results/metrics")
 
 def find_optimal_threshold(
         y_true: np.ndarray,
@@ -101,9 +102,9 @@ if __name__ == "__main__":
         "mlp_best_f1": mlp_best_f1,
         "tuned_on": "validation",
     }
-    with (MODELS_DIR / "thresholds.json").open("w") as f:
+    with (METRICS_DIR / "thresholds.json").open("w") as f:
         json.dump(thresholds, f, indent=4)
-    logger.info(f"\nOptimal thresholds saved to {MODELS_DIR / 'thresholds.json'}")
+    logger.info(f"\nOptimal thresholds saved to {METRICS_DIR / 'thresholds.json'}")
 
     # 5. Visualisation
     plt.figure(figsize=(12, 5))
@@ -130,8 +131,8 @@ if __name__ == "__main__":
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig(MODELS_DIR / "optimisation_results.png")
-    logger.info(f"\nPlot saved to {MODELS_DIR / 'optimisation_results.png'}")
+    plt.savefig(METRICS_DIR / "optimisation_results.png")
+    logger.info(f"\nPlot saved to {METRICS_DIR / 'optimisation_results.png'}")
 
     # 6. Final Evaluation on Test Set
     logger.info("-" * 50)

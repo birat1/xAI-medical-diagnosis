@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path("../data/processed")
 MODELS_DIR = Path("../models")
 MODELS_DIR.mkdir(exist_ok=True)
+METRICS_DIR = Path("../results/metrics")
 
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
     """Load preprocessed train/val/test datasets."""
@@ -183,9 +184,9 @@ def evaluate(y_true: np.ndarray, probs: np.ndarray, threshold: float) -> tuple[f
 
 def load_thresholds() -> dict[str, float] | None:
     """Load optimal thresholds from JSON file."""
-    if not (MODELS_DIR / "thresholds.json").exists():
+    if not (METRICS_DIR / "thresholds.json").exists():
         return None
-    with (MODELS_DIR / "thresholds.json").open("r") as f:
+    with (METRICS_DIR / "thresholds.json").open("r") as f:
         data = json.load(f)
         # expected keys: rf_threshold, mlp_threshold
     if "rf_threshold" in data and "mlp_threshold" in data:

@@ -6,8 +6,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import average_precision_score, classification_report, f1_score, precision_recall_fscore_support
 import torch
+from sklearn.metrics import average_precision_score, classification_report, f1_score, precision_recall_fscore_support
 
 from models import MLP
 
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = Path("../data/processed")
 MODELS_DIR = Path("../models")
+METRICS_DIR = Path("../results/metrics")
 
 def load_test() -> tuple[pd.DataFrame, np.ndarray]:
     """Load test dataset."""
@@ -26,7 +27,7 @@ def load_test() -> tuple[pd.DataFrame, np.ndarray]:
 
 def load_thresholds() -> tuple[float, float]:
     """Load optimal thresholds for models."""
-    with (MODELS_DIR / "thresholds.json").open("r") as f:
+    with (METRICS_DIR / "thresholds.json").open("r") as f:
         data = json.load(f)
     return float(data["rf_threshold"]), float(data["mlp_threshold"])
 
@@ -79,7 +80,7 @@ if __name__ == "__main__":
             "mlp": mlp_results,
         }
 
-        results_file = MODELS_DIR / "test_evaluation_results.json"
+        results_file = METRICS_DIR / "test_evaluation_results.json"
         with results_file.open("w") as f:
             json.dump(final_results, f, indent=4)
 
