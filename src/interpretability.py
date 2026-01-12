@@ -10,7 +10,7 @@ import shap
 import torch
 from matplotlib import pyplot as plt
 
-from models import MLP
+from models import MLP, set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -45,6 +45,8 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, list[str]
 def run_shap(model: object, x_test: pd.DataFrame, feature_names: list[str], name: str ="Random Forest") -> None:
     """Generate SHAP global feature importance plots."""
     logger.info(f"Generating SHAP explanations for {name}...")
+
+    np.random.default_rng(42)
 
     # SHAP for MLP
     if isinstance(model, torch.nn.Module):
@@ -88,6 +90,7 @@ def run_lime(
         feature_names=feature_names,
         class_names=["No Diabetes", "Diabetes"],
         mode="classification",
+        random_state=42,
     )
 
     # If model is MLP, define a prediction function
@@ -120,6 +123,7 @@ def run_lime(
     plt.close(fig)
 
 if __name__ == "__main__":
+    set_seed(42)
     rf, mlp, x_train, x_test, features = load_resources()
 
     # 1. Interpret Random Forest
