@@ -4,9 +4,9 @@ This repository contains the code for my final year dissertation. It focuses on 
 
 ## Overview
 
-- Goal: To develop a system that not only predicts medical conditions but explains them through "what-if" scenarios (counterfactuals).
-- Covers: Random Forest, Multi-Layer Perception, SHAP, LIME, DiCE, PyGol
-- Data: Medical datasets (e.g., Pima Indians Diabetes)
+**Goal**: To develop a system that not only predicts medical conditions but explains them through "what-if" scenarios (counterfactuals).  
+**Covers**: Random Forest, Multi-Layer Perception, SHAP, LIME, DiCE, PyGol  
+**Data**: Medical datasets (e.g., Pima Indians Diabetes)
 
 ## Installation
 
@@ -19,25 +19,25 @@ uv sync
 
 ## Usage
 
-**Preprocessing**
+#### Preprocessing
 
 ```py
 uv run preprocessing.py --input [../data/raw/diabetes.csv] --output [../data/processed]
 ```
 
-**Model Training**
+#### Model Training
 
 ```py
 uv run models.py
 ```
 
-**Threshold optimisation**
+#### Threshold optimisation
 
 ```py
 uv run optimise_threshold.py
 ```
 
-**Final Evaluation**
+#### Final Evaluation
 
 ```py
 uv run evaluate_models.py
