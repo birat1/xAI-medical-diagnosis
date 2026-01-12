@@ -5,8 +5,8 @@ This repository contains the code for my final year dissertation. It focuses on 
 ## Overview
 
 **Goal**: To develop a system that not only predicts medical conditions but explains them through "what-if" scenarios (counterfactuals).  
-**Covers**: Random Forest, Multi-Layer Perception, SHAP, LIME, DiCE, PyGol  
-**Data**: Medical datasets (e.g., Pima Indians Diabetes)
+**Covers**: Random Forest, Multi-Layer Perception, [SHAP](https://github.com/shap/shap), [LIME](https://github.com/marcotcr/lime), [DiCE](https://github.com/interpretml/DiCE), [PyGol](github.com/danyvarghese/PyGol)
+**Data**: Medical datasets (e.g., [Pima Indians Diabetes](https://www.kaggle.com/datasets/uciml/pima-indians-diabetes-database))
 
 ## Installation
 
