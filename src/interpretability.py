@@ -111,7 +111,13 @@ def run_lime(
     # Save as HTML
     output_path = LIME_DIR / f"lime_report_{name.lower().replace(' ', '_')}.html"
     exp.save_to_file(output_path)
-    logger.info(f"LIME report saved to {output_path}")
+
+    # Save as figure
+    fig = exp.as_pyplot_figure()
+    plt.figure(figsize=(10, 6))
+    plt.title(f"LIME Explanation for {name.lower().replace(' ', '_')} - Instance {idx}")
+    fig.savefig(LIME_DIR / f"lime_plot_{name.lower().replace(' ', '_')}.png", bbox_inches="tight", dpi=300)
+    plt.close(fig)
 
 if __name__ == "__main__":
     rf, mlp, x_train, x_test, features = load_resources()
