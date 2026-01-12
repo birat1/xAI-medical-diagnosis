@@ -97,31 +97,72 @@ class MLP(nn.Module):
         """Define the forward pass."""
         return self.layers(x)
 
-def train_mlp(x_train: pd.DataFrame, y_train: np.ndarray, epochs: int = 200, lr: float = 1e-2) -> MLP:
+def train_mlp(  # noqa: PLR0913
+        x_train: pd.DataFrame,
+        y_train: np.ndarray,
+        x_val: pd.DataFrame,
+        y_val: np.ndarray,
+        epochs: int = 200,
+        lr: float = 1e-2,
+    ) -> MLP:
     """Train a Multi-Layer Perceptron model using training data."""
     logger.info("Starting MLP training...")
 
+    # 1. Weighted Loss: handle class imbalance
     model = MLP(x_train.shape[1])
+    pos_weight = torch.tensor([(y_train == 0).sum() / (y_train == 1).sum()], dtype=torch.float32)
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimiser = optim.Adam(model.parameters(), lr=lr)
-    criterion = nn.BCEWithLogitsLoss()
 
+    # 2. LR Scheduler: reduces learning rate on plateau of validation loss
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimiser, mode="min", factor=0.1, patience=10)
+
+    # Convert data to tensors
     x_train_tensor = torch.tensor(x_train.values, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.float32).view(-1, 1)
+    x_val_tensor = torch.tensor(x_val.values, dtype=torch.float32)
+    y_val_tensor = torch.tensor(y_val, dtype=torch.float32).view(-1, 1)
 
-    model.train()
+    best_val_loss = float("inf")
+    early_stop_patience = 20
+    patience_counter = 0
+
     for epoch in range(1, epochs + 1):
+        # Training phase
+        model.train()
         optimiser.zero_grad()
         logits = model(x_train_tensor)
         loss = criterion(logits, y_train_tensor)
         loss.backward()
         optimiser.step()
 
-        if epoch % 50 == 0:
-            logger.info(f"Epoch [{epoch}/{epochs}], Loss: {loss.item():.4f}")
+        # 3. Validation phase for early stopping and LR scheduling
+        model.eval()
+        with torch.no_grad():
+            val_logits = model(x_val_tensor)
+            val_loss = nn.BCEWithLogitsLoss()(val_logits, y_val_tensor)
 
-    torch.save(model.state_dict(), MODELS_DIR / "mlp_model.pth")
-    logger.info("MLP model saved to ../models/mlp_model.pth")
+        # Step the scheduler based on validation loss
+        scheduler.step(val_loss)
 
+        # Save the best model and stop if no improvement
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            torch.save(model.state_dict(), MODELS_DIR / "mlp_model.pth")
+        else:
+            patience_counter += 1
+            if patience_counter >= early_stop_patience:
+                logger.info(f"Early stopping at epoch {epoch}. Best Val Loss: {best_val_loss.item():.4f}")
+                break
+
+        if epoch % 20 == 0:
+            logger.info(f"Epoch [{epoch}/{epochs}], Train Loss: {loss.item():.4f}, Val Loss: {val_loss.item():.4f}")
+
+    logger.info("MLP training completed and best model saved to ../models/mlp_model.pth")
+
+    # Load the best model before returning
+    model.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
     return model
 
 # Evaluation helpers
@@ -159,7 +200,7 @@ if __name__ == "__main__":
         # Train models using training data only
         rf_model = train_rf(x_train, y_train)
         logger.info("-" * 50)
-        mlp_model = train_mlp(x_train, y_train)
+        mlp_model = train_mlp(x_train, y_train, x_val, y_val , epochs=500, lr=1e-2)
         logger.info("-" * 50)
 
         rf_val_probs = predict_probs(rf_model, x_val, is_pytorch=False)
