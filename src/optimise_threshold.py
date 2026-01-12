@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.metrics import classification_report, f1_score, precision_recall_curve
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import average_precision_score, classification_report, f1_score, precision_recall_curve
 
 from models import MLP
 
@@ -25,25 +26,20 @@ def find_optimal_threshold(
     ) -> tuple[float, np.ndarray, np.ndarray, float]:
     """Find threshold that maximises the F1-Score."""
     precision, recall, thresholds = precision_recall_curve(y_true, y_probs)
-
     f1_scores = 2 * (precision * recall) / (precision + recall + 1e-10)
 
     best_idx = int(np.argmax(f1_scores[:-1]))
     best_threshold = float(thresholds[best_idx])
     best_f1 = float(f1_scores[best_idx])
 
+    auprc = average_precision_score(y_true, y_probs)
+
     logger.info(f"\n--- {model_name} Optimisation (VALIDATION) ---")
+    logger.info(f"AUPRC: {auprc:.4f}")
     logger.info(f"Optimal Threshold: {best_threshold:.4f}")
     logger.info(f"Max F1-Score at this threshold: {best_f1:.4f}")
 
     return best_threshold, thresholds, f1_scores[:-1], best_f1
-
-# Random Forest
-def predict_rf_probs(x: pd.DataFrame) -> np.ndarray:
-    """Predict probabilities using the saved Random Forest model."""
-    with (MODELS_DIR / "rf_model.pkl").open("rb") as f:
-        rf_model = pickle.load(f)
-    return rf_model.predict_proba(x)[:, 1]
 
 # MLP
 def predict_mlp_probs(x: pd.DataFrame) -> np.ndarray:
@@ -57,31 +53,47 @@ def predict_mlp_probs(x: pd.DataFrame) -> np.ndarray:
         return torch.sigmoid(logits).numpy().ravel()
 
 # Evaluation
-def evaluate_threshold(y_true: np.ndarray, probs: np.ndarray, threshold: float, name: str) -> None:
-    """Evaluate model performance at a given threshold."""
+def evaluate_with_calibration(
+        y_true: np.ndarray,
+        probs: np.ndarray,
+        threshold: float,
+        name: str,
+    ) -> tuple[np.ndarray, np.ndarray]:
+    """Evaluate model performance including calibration analysis."""
     preds = (probs >= threshold).astype(int)
-    logger.info(f"\n--- {name} Evaluation (threshold {threshold:.4f}) ---")
+
+    prob_true, prob_pred = calibration_curve(y_true, probs, n_bins=10)
+
+    logger.info(f"\n--- {name} Final Evaluation (threshold {threshold:.4f}) ---")
     logger.info(f"F1-Score: {f1_score(y_true, preds):.4f}")
     logger.info(classification_report(y_true, preds))
 
+    return prob_true, prob_pred
+
 if __name__ == "__main__":
     # Load Validation Set
-    x_val_path = DATA_DIR / "x_val.csv"
-    y_val_path = DATA_DIR / "y_val.csv"
-    if not x_val_path.exists() or not y_val_path.exists():
-        raise FileNotFoundError("Validation data not found. Please run preprocessing first.")  # noqa: EM101, TRY003
+    x_val = pd.read_csv(DATA_DIR / "x_val.csv")
+    y_val = pd.read_csv(DATA_DIR / "y_val.csv").to_numpy().ravel()
 
-    x_val = pd.read_csv(x_val_path)
-    y_val = pd.read_csv(y_val_path).to_numpy().ravel()
+    # 1. Random Forest Predictions
+    with (MODELS_DIR / "rf_model.pkl").open("rb") as f:
+            rf_model = pickle.load(f)
+    rf_val_probs = rf_model.predict_proba(x_val)[:, 1]
 
-    # Tune thresholds
-    rf_val_probs = predict_rf_probs(x_val)
+    # 2. Multi-Layer Perceptron Predictions
+    mlp = MLP(x_val.shape[1])
+    state = torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True)
+    mlp.load_state_dict(state)
+    mlp.eval()
+    with torch.no_grad():
+        logits = mlp(torch.tensor(x_val.values, dtype=torch.float32))
+    mlp_val_probs = torch.sigmoid(logits).numpy().ravel()
+
+    # 3. Find Optimal Thresholds
     rf_thresh, rf_ts, rf_f1s, rf_best_f1 = find_optimal_threshold(y_val, rf_val_probs, model_name="Random Forest")
+    mlp_thresh, mlp_ts, mlp_f1s, mlp_best_f1 = find_optimal_threshold(y_val, mlp_val_probs, model_name="Multi-Layer Perceptron")  # noqa: E501
 
-    mlp_val_probs = predict_mlp_probs(x_val)
-    mlp_thresh, mlp_ts, mlp_f1s, mlp_best_f1 = find_optimal_threshold(y_val, mlp_val_probs, model_name="Multi-Layer Perceptron")
-
-    # Save thresholds
+    # 4. Save Artifacts
     thresholds = {
         "rf_threshold": rf_thresh,
         "mlp_threshold": mlp_thresh,
@@ -93,21 +105,43 @@ if __name__ == "__main__":
         json.dump(thresholds, f, indent=4)
     logger.info(f"\nOptimal thresholds saved to {MODELS_DIR / 'thresholds.json'}")
 
-    # Visualisation
-    plt.figure(figsize=(10, 5))
+    # 5. Visualisation
+    plt.figure(figsize=(12, 5))
+
+    # Subplot 1: F1-Score vs Threshold
+    plt.subplot(1, 2, 1)
     plt.plot(rf_ts, rf_f1s, label=f"RF (best={rf_thresh:.2f})")
     plt.plot(mlp_ts, mlp_f1s, label=f"MLP (best={mlp_thresh:.2f})")
     plt.axvline(0.5, color="red", linestyle="--", label="Default 0.5")
     plt.xlabel("Threshold")
     plt.ylabel("F1-Score")
-    plt.title("Threshold Optimisation on Validation Set")
+    plt.title("Threshold Optimisation")
     plt.legend()
-    plt.savefig(MODELS_DIR / "threshold_optimisation_val.png", bbox_inches="tight")
-    logger.info(f"\nPlot saved to {MODELS_DIR / 'threshold_optimisation_val.png'}")
 
-    # Evaluate on Test Set
+    # Subplot 2: Calibration Curve
+    plt.subplot(1, 2, 2)
+    for name, probs in [("RF", rf_val_probs), ("MLP", mlp_val_probs)]:
+        prob_true, prob_pred = calibration_curve(y_val, probs, n_bins=10)
+        plt.plot(prob_pred, prob_true, marker="o", label=name)
+    plt.plot([0, 1], [0, 1], linestyle="--", color="gray", label="Perfectly Calibrated")
+    plt.xlabel("Mean Predicted Probability")
+    plt.ylabel("Fraction of Positives")
+    plt.title("Calibration Curve")
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig(MODELS_DIR / "optimisation_results.png")
+    logger.info(f"\nPlot saved to {MODELS_DIR / 'optimisation_results.png'}")
+
+    # 6. Final Evaluation on Test Set
+    logger.info("-" * 50)
     x_test = pd.read_csv(DATA_DIR / "x_test.csv")
     y_test = pd.read_csv(DATA_DIR / "y_test.csv").to_numpy().ravel()
 
-    evaluate_threshold(y_test, predict_rf_probs(x_test), rf_thresh, "Random Forest (Test)")
-    evaluate_threshold(y_test, predict_mlp_probs(x_test), mlp_thresh, "Multi-Layer Perceptron (Test)")
+    rf_test_probs = rf_model.predict_proba(x_test)[:, 1]
+    evaluate_with_calibration(y_test, rf_test_probs, rf_thresh, name="Random Forest (Test)")
+
+    with torch.no_grad():
+        mlp_test_logits = mlp(torch.tensor(x_test.values, dtype=torch.float32))
+        mlp_test_probs = torch.sigmoid(mlp_test_logits).numpy().ravel()
+    evaluate_with_calibration(y_test, mlp_test_probs, mlp_thresh, name="Multi-Layer Perceptron (Test)")
