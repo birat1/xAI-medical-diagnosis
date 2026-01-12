@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from imblearn.over_sampling import SMOTE
+from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+from sklearn.impute import IterativeImputer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -46,23 +49,6 @@ def _replace_zeros_with_nan(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
             df[col] = df[col].replace(0, np.nan)
     return df
 
-def fit_imputer_medians(x_train: pd.DataFrame, cols: list[str]) -> dict[str, float]:
-    """Fit median values on training data for specified columns."""
-    medians: dict[str, float] = {}
-    for col in cols:
-        if col in x_train.columns:
-            med = float(x_train[col].median())
-            medians[col] = med
-    return medians
-
-def apply_imputer_medians(x: pd.DataFrame, medians: dict[str, float]) -> pd.DataFrame:
-    """Apply median imputation to specified columns."""
-    x = x.copy()
-    for col, med in medians.items():
-        if col in x.columns:
-            x[col] = x[col].fillna(med)
-    return x
-
 def preprocess_and_split(  # noqa: PLR0913
         df: pd.DataFrame,
         target_col: str = "Outcome",
@@ -78,6 +64,7 @@ def preprocess_and_split(  # noqa: PLR0913
     x = df.drop(columns=[target_col])
     y = df[target_col].astype(int)
 
+    # 1. Initial train/test split
     x_train_full, x_test, y_train_full, y_test = train_test_split(
         x, y, test_size=test_size, random_state=seed, stratify=y,
     )
@@ -94,36 +81,43 @@ def preprocess_and_split(  # noqa: PLR0913
         x_train, y_train = x_train_full, y_train_full
         x_val, y_val = None, None
 
+    # 2. Handle zeros in medical columns (0s --> NaNs)
     x_train = _replace_zeros_with_nan(x_train, MEDICAL_COLS)
     x_test = _replace_zeros_with_nan(x_test, MEDICAL_COLS)
     if make_val and x_val is not None:
         x_val = _replace_zeros_with_nan(x_val, MEDICAL_COLS)
 
-    medians = fit_imputer_medians(x_train, MEDICAL_COLS)
-
-    x_train = apply_imputer_medians(x_train, medians)
-    x_test = apply_imputer_medians(x_test, medians)
+    # 3. Fit median imputer on training data
+    imputer = IterativeImputer(random_state=seed)
+    x_train_imputed = imputer.fit_transform(x_train)
+    x_test_imputed = imputer.transform(x_test)
     if make_val and x_val is not None:
-        x_val = apply_imputer_medians(x_val, medians)
+        x_val_imputed = imputer.transform(x_val)
 
+    # 4. Address class imbalance with SMOTE
+    smote = SMOTE(random_state=seed)
+    x_train_res, y_train_res = smote.fit_resample(x_train_imputed, y_train)
+
+    # 5. Normalisation / Scaling
     scaler = StandardScaler()
-    x_train_scaled = pd.DataFrame(scaler.fit_transform(x_train), columns=x_train.columns)
-    x_test_scaled = pd.DataFrame(scaler.transform(x_test), columns=x_test.columns)
+    x_train_scaled = pd.DataFrame(scaler.fit_transform(x_train_res), columns=x.columns)
+    x_test_scaled = pd.DataFrame(scaler.transform(x_test_imputed), columns=x.columns)
     if make_val and x_val is not None:
-        x_val_scaled = pd.DataFrame(scaler.transform(x_val), columns=x_val.columns)
+        x_val_scaled = pd.DataFrame(scaler.transform(x_val_imputed), columns=x.columns)
     else:
         x_val_scaled = None
 
     logger.info(
-        "Completed preprocessing.\n"
+        "Completed preprocessing with IterativeImputer and SMOTE.\n"
         f"Train size: {len(x_train_scaled)} | "
         f"Val size: {len(x_val_scaled) if x_val_scaled is not None else 0} | "
         f"Test size: {len(x_test_scaled)}"  # noqa: COM812
     )
 
+    # 6. Save preprocessing artifacts
     artifacts = {
         "columns": list(x_train.columns),
-        "medians": medians,
+        "imputer": imputer,
         "scaler": scaler,
         "seed": seed,
         "target_col": target_col,
@@ -131,7 +125,7 @@ def preprocess_and_split(  # noqa: PLR0913
 
     return {
         "x_train": x_train_scaled,
-        "y_train": y_train.reset_index(drop=True),
+        "y_train": y_train_res.reset_index(drop=True),
         "x_val": x_val_scaled,
         "y_val": y_val.reset_index(drop=True) if y_val is not None else None,
         "x_test": x_test_scaled,

@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "cython>=3.2.4",
     "dice-ml>=0.12",
+    "imbalanced-learn>=0.14.1",
     "janus-swi>=1.5.2",
     "lime>=0.2.0.1",
     "matplotlib>=3.10.8",
