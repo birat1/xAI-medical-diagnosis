@@ -80,6 +80,7 @@ def run_lime(
         x_train: pd.DataFrame,
         x_test: pd.DataFrame,
         feature_names: list[str],
+        indices: list[int],
         name: str ="Random Forest",
     ) -> None:
     """Generate LIME explanations for a specific patient."""
@@ -107,31 +108,34 @@ def run_lime(
             x_df = pd.DataFrame(x, columns=feature_names)
             return model.predict_proba(x_df)
 
-    # Explain the first instance in the test set
-    idx = 0
-    exp = explainer.explain_instance(x_test.to_numpy()[idx], predict_fn, num_features=len(feature_names))
+    # Generate explanations for specified indices
+    for idx in indices:
+        exp = explainer.explain_instance(x_test.to_numpy()[idx], predict_fn, num_features=len(feature_names))
 
-    # Save as HTML
-    output_path = LIME_DIR / f"lime_report_{name.lower().replace(' ', '_')}.html"
-    exp.save_to_file(output_path)
+        # Create directory for patient
+        patient_dir = LIME_DIR / name.lower().replace(" ", "_") / f"patient_{idx:03d}"
+        patient_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save as figure
-    fig = exp.as_pyplot_figure()
-    plt.figure(figsize=(10, 6))
-    plt.title(f"LIME Explanation for {name.lower().replace(' ', '_')} - Instance {idx}")
-    fig.savefig(LIME_DIR / f"lime_plot_{name.lower().replace(' ', '_')}.png", bbox_inches="tight", dpi=300)
-    plt.close(fig)
+        # 1. Save explanation to HTML
+        exp.save_to_file(patient_dir / "explanation.html")
+
+        # 2. Save explanation as PNG
+        fig = exp.as_pyplot_figure()
+        fig.suptitle(f"LIME Explanation for {name} - Patient Index {idx}")
+        fig.savefig(patient_dir / "explanation.png", bbox_inches="tight", dpi=300)
+        plt.close(fig)
 
 if __name__ == "__main__":
     set_seed(42)
     rf, mlp, x_train, x_test, features = load_resources()
 
+    test_indices = [0, 1, 2, 3, 4]
+
     # 1. Interpret Random Forest
     run_shap(rf, x_test, features, name="Random Forest")
-    run_lime(rf, x_train, x_test, features, name="Random Forest")
-
+    run_lime(rf, x_train, x_test, features, test_indices, name="Random Forest")
     # 2. Interpret MLP
     run_shap(mlp, x_test, features, name="Multi-Layer Perceptron")
-    run_lime(mlp, x_train, x_test, features, name="Multi-Layer Perceptron")
+    run_lime(mlp, x_train, x_test, features, test_indices, name="Multi-Layer Perceptron")
 
-    logger.info("Interpretability analysis completed.")
+    logger.info(f"Interpretability analysis completed for patients: {test_indices}.")
