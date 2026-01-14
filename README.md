@@ -51,6 +51,12 @@ uv run evaluate_models.py
 uv run interpretability.py
 ```
 
+### Explain
+
+```py
+uv run explainability.py
+```
+
 ## Results
 
 Results are stored in the [results](https://github.com/birat1/xAI-medical-diagnosis/tree/master/results) folder.
