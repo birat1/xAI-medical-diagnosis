@@ -1,4 +1,5 @@
 """Interpretability analysis using SHAP and LIME for diabetes prediction."""
+
 import logging
 import pickle
 from pathlib import Path
@@ -19,6 +20,7 @@ MODELS_DIR = Path("../models")
 DATA_DIR = Path("../data/processed")
 SHAP_DIR = Path("../results/shap")
 LIME_DIR = Path("../results/lime")
+
 
 def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, list[str]]:
     """Load trained models, data, and artifacts."""
@@ -42,7 +44,8 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, list[str]
 
     return rf_model, mlp_model, x_train, x_test, feature_names
 
-def run_shap(model: object, x_test: pd.DataFrame, feature_names: list[str], name: str ="Random Forest") -> None:
+
+def run_shap(model: object, x_test: pd.DataFrame, feature_names: list[str], name: str = "Random Forest") -> None:
     """Generate SHAP global feature importance plots."""
     logger.info(f"Generating SHAP explanations for {name}...")
 
@@ -75,13 +78,14 @@ def run_shap(model: object, x_test: pd.DataFrame, feature_names: list[str], name
     plt.savefig(SHAP_DIR / f"shap_summary_{name.lower().replace(' ', '_')}.png", bbox_inches="tight", dpi=300)
     plt.close()
 
-def run_lime(
+
+def run_lime(  # noqa: PLR0913
         model: object,
         x_train: pd.DataFrame,
         x_test: pd.DataFrame,
         feature_names: list[str],
         indices: list[int],
-        name: str ="Random Forest",
+        name: str = "Random Forest",
     ) -> None:
     """Generate LIME explanations for a specific patient."""
     logger.info(f"Generating LIME explanations for {name}...")
@@ -96,6 +100,7 @@ def run_lime(
 
     # If model is MLP, define a prediction function
     if isinstance(model, torch.nn.Module):
+
         def predict_fn(x: np.ndarray) -> np.ndarray:
             model.eval()
             with torch.no_grad():
@@ -104,6 +109,7 @@ def run_lime(
                 return np.hstack((1 - probs, probs))
     # If model is Random Forest
     else:
+
         def predict_fn(x: np.ndarray) -> np.ndarray:
             x_df = pd.DataFrame(x, columns=feature_names)
             return model.predict_proba(x_df)
@@ -124,6 +130,7 @@ def run_lime(
         fig.suptitle(f"LIME Explanation for {name} - Patient Index {idx}")
         fig.savefig(patient_dir / "explanation.png", bbox_inches="tight", dpi=300)
         plt.close(fig)
+
 
 if __name__ == "__main__":
     set_seed(42)
