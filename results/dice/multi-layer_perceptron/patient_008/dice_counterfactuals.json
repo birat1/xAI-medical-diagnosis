@@ -1,0 +1,99 @@
+{
+  "test_data": [
+    [
+      [
+        -0.6135302494376035,
+        -0.8808178305625916,
+        -0.716733455657959,
+        -0.7311093807220459,
+        -0.6642426252365112,
+        -0.4995679259300232,
+        -0.401231586933136,
+        -1.1375391179724534,
+        0.0
+      ]
+    ]
+  ],
+  "cfs_list": [
+    [
+      [
+        -0.6135302494376035,
+        1.5287354,
+        -0.20927362,
+        -0.73110938072,
+        0.1142297,
+        -0.49956793,
+        -0.40123159,
+        -1.1375391179724534,
+        1.0
+      ],
+      [
+        -0.6135302494376035,
+        1.19865954,
+        -0.20927362,
+        -0.73110938072,
+        -0.5828364,
+        -0.21543181,
+        -0.40123159,
+        -1.1375391179724534,
+        1.0
+      ],
+      [
+        -0.6135302494376035,
+        1.26467478,
+        -0.37842688,
+        -0.73110938072,
+        0.1142297,
+        0.08365883,
+        -0.40123159,
+        -1.1375391179724534,
+        1.0
+      ]
+    ]
+  ],
+  "local_importance": null,
+  "summary_importance": null,
+  "data_interface": {
+    "outcome_name": "Outcome",
+    "data_df": "dummy_data"
+  },
+  "feature_names": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age"
+  ],
+  "feature_names_including_target": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age",
+    "Outcome"
+  ],
+  "model_type": "classifier",
+  "desired_class": 1.0,
+  "desired_range": null,
+  "metadata": {
+    "model_name": "Multi-Layer Perceptron",
+    "patient_idx": 8,
+    "dice_method_used": "genetic",
+    "actionable_features": [
+      "Glucose",
+      "BMI",
+      "BloodPressure",
+      "Insulin"
+    ],
+    "permitted_range_quantiles": [
+      0.05,
+      0.95
+    ]
+  }
+}

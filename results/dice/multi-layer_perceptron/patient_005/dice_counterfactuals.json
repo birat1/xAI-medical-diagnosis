@@ -1,0 +1,121 @@
+{
+  "test_data": [
+    [
+      [
+        -0.3103662370742813,
+        -0.8808178305625916,
+        -0.3784268796443939,
+        -0.7311093807220459,
+        -0.8483853936195374,
+        -0.215431809425354,
+        1.4061870574951172,
+        -0.522336429459591,
+        0.0
+      ]
+    ]
+  ],
+  "cfs_list": [
+    [
+      [
+        -0.3103662370742813,
+        1.26467478,
+        -0.37842688,
+        -0.73110938072,
+        0.1142297,
+        0.08365883,
+        1.40618706,
+        -0.522336429459591,
+        1.0
+      ],
+      [
+        -0.3103662370742813,
+        0.1681274,
+        -0.20927362,
+        -0.73110938072,
+        -0.2857592,
+        0.08711894,
+        1.40618706,
+        -0.522336429459591,
+        1.0
+      ],
+      [
+        -0.3103662370742813,
+        0.2414398,
+        -0.20927362,
+        -0.73110938072,
+        -0.3062229,
+        0.35284042,
+        1.40618706,
+        -0.522336429459591,
+        1.0
+      ],
+      [
+        -0.3103662370742813,
+        0.22087887,
+        -0.15381427,
+        -0.73110938072,
+        0.2177258,
+        -0.21641323,
+        1.40618706,
+        -0.522336429459591,
+        1.0
+      ],
+      [
+        -0.3103662370742813,
+        0.30745497,
+        -0.20927362,
+        -0.73110938072,
+        0.1494716,
+        -0.27524996,
+        1.40618706,
+        -0.522336429459591,
+        1.0
+      ]
+    ]
+  ],
+  "local_importance": null,
+  "summary_importance": null,
+  "data_interface": {
+    "outcome_name": "Outcome",
+    "data_df": "dummy_data"
+  },
+  "feature_names": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age"
+  ],
+  "feature_names_including_target": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age",
+    "Outcome"
+  ],
+  "model_type": "classifier",
+  "desired_class": 1.0,
+  "desired_range": null,
+  "metadata": {
+    "model_name": "Multi-Layer Perceptron",
+    "patient_idx": 5,
+    "dice_method_used": "genetic",
+    "actionable_features": [
+      "Glucose",
+      "BMI",
+      "BloodPressure",
+      "Insulin"
+    ],
+    "permitted_range_quantiles": [
+      0.05,
+      0.95
+    ]
+  }
+}

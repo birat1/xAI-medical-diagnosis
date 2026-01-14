@@ -1,0 +1,99 @@
+{
+  "test_data": [
+    [
+      [
+        -0.6135302494376035,
+        -1.7390148639678955,
+        -0.544500470161438,
+        -0.5786516070365906,
+        -1.2090531587600708,
+        -0.4328552186489105,
+        -1.228724479675293,
+        -1.049653019613473,
+        0.0
+      ]
+    ]
+  ],
+  "cfs_list": [
+    [
+      [
+        -0.6135302494376035,
+        1.19146752,
+        -0.5445004852593447,
+        -0.5786516233395824,
+        0.3272395,
+        1.38750423,
+        -1.228724448402082,
+        -1.049653019613473,
+        1.0
+      ],
+      [
+        -0.6135302494376035,
+        1.74683031,
+        -0.5445004852593447,
+        -0.5786516233395824,
+        1.1473917,
+        0.81053043,
+        -1.228724448402082,
+        -1.049653019613473,
+        1.0
+      ],
+      [
+        -0.6135302494376035,
+        1.80324649,
+        -0.5445004852593447,
+        -0.5786516233395824,
+        1.0962525,
+        0.86887238,
+        -1.228724448402082,
+        -1.049653019613473,
+        0.0
+      ]
+    ]
+  ],
+  "local_importance": null,
+  "summary_importance": null,
+  "data_interface": {
+    "outcome_name": "Outcome",
+    "data_df": "dummy_data"
+  },
+  "feature_names": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age"
+  ],
+  "feature_names_including_target": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age",
+    "Outcome"
+  ],
+  "model_type": "classifier",
+  "desired_class": 1,
+  "desired_range": null,
+  "metadata": {
+    "model_name": "Random Forest",
+    "patient_idx": 4,
+    "dice_method_used": "random",
+    "actionable_features": [
+      "Glucose",
+      "BMI",
+      "BloodPressure",
+      "Insulin"
+    ],
+    "permitted_range_quantiles": [
+      0.05,
+      0.95
+    ]
+  }
+}

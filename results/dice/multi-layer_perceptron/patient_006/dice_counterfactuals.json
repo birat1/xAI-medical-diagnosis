@@ -1,0 +1,110 @@
+{
+  "test_data": [
+    [
+      [
+        1.2054538247423294,
+        -0.7157799601554871,
+        2.3280255794525146,
+        0.625175952911377,
+        -0.3615644574165344,
+        1.5342484712600708,
+        -0.8025345206260681,
+        0.9717272426430748,
+        0.0
+      ]
+    ]
+  ],
+  "cfs_list": [
+    [
+      [
+        1.2054538247423294,
+        0.08328815,
+        1.33849873,
+        0.62517595291,
+        0.1655253,
+        1.53424847,
+        -0.80253452,
+        0.9717272426430748,
+        1.0
+      ],
+      [
+        1.2054538247423294,
+        -0.15465114,
+        1.48225915,
+        0.62517595291,
+        0.6895859,
+        1.53424847,
+        -0.80253452,
+        0.9717272426430748,
+        1.0
+      ],
+      [
+        1.2054538247423294,
+        0.10563491,
+        0.77409583,
+        0.62517595291,
+        -0.2012453,
+        1.53424847,
+        -0.80253452,
+        0.9717272426430748,
+        1.0
+      ],
+      [
+        1.2054538247423294,
+        -0.38570419,
+        0.2408149,
+        0.62517595291,
+        0.0625856,
+        1.53424847,
+        -0.80253452,
+        0.9717272426430748,
+        1.0
+      ]
+    ]
+  ],
+  "local_importance": null,
+  "summary_importance": null,
+  "data_interface": {
+    "outcome_name": "Outcome",
+    "data_df": "dummy_data"
+  },
+  "feature_names": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age"
+  ],
+  "feature_names_including_target": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age",
+    "Outcome"
+  ],
+  "model_type": "classifier",
+  "desired_class": 1.0,
+  "desired_range": null,
+  "metadata": {
+    "model_name": "Multi-Layer Perceptron",
+    "patient_idx": 6,
+    "dice_method_used": "genetic",
+    "actionable_features": [
+      "Glucose",
+      "BMI",
+      "BloodPressure",
+      "Insulin"
+    ],
+    "permitted_range_quantiles": [
+      0.05,
+      0.95
+    ]
+  }
+}
