@@ -13,7 +13,14 @@ import dice_ml
 import pandas as pd
 import torch
 from pandas.errors import PerformanceWarning
-from PyGol import PyGol
+from PyGol import (
+    bottom_clause_generation,
+    prepare_examples,
+    prepare_logic_rules,
+    pygol_learn,
+    pygol_train_test_split,
+    read_constants_meta_info,
+)
 from raiutils.exceptions import UserConfigValidationException
 from torch import nn
 
@@ -23,21 +30,23 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 MODELS_DIR = Path("../models")
-DATA_DIR = Path("../data/processed")
+PROCESSED_DATA_DIR = Path("../data/processed")
+SYMBOLIC_DATA_DIR = Path("../data/symbolic")
 DICE_DIR = Path("../results/dice")
+RULES_DIR = Path("../results/pygol")
 
 warnings.filterwarnings("ignore", category=PerformanceWarning)
 
 def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str]]:
-    """Load trained models, data, and artifacts."""
+    """Load trained models, data (processed), and artifacts."""
     # 1. Load Data
-    x_train = pd.read_csv(DATA_DIR / "x_train.csv")
-    y_train = pd.read_csv(DATA_DIR / "y_train.csv")
-    x_test = pd.read_csv(DATA_DIR / "x_test.csv")
-    y_test = pd.read_csv(DATA_DIR / "y_test.csv")
+    x_train = pd.read_csv(PROCESSED_DATA_DIR / "x_train.csv")
+    y_train = pd.read_csv(PROCESSED_DATA_DIR / "y_train.csv")
+    x_test = pd.read_csv(PROCESSED_DATA_DIR / "x_test.csv")
+    y_test = pd.read_csv(PROCESSED_DATA_DIR / "y_test.csv")
 
     # 2. Load Artifacts
-    with Path(DATA_DIR / "preprocess_artifacts.pkl").open("rb") as f:
+    with Path(PROCESSED_DATA_DIR / "preprocess_artifacts.pkl").open("rb") as f:
         artifacts = pickle.load(f)
     feature_names = artifacts["columns"]
 
@@ -52,6 +61,17 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFr
 
     return rf_model, mlp_model, x_train, y_train, x_test, y_test, feature_names
 
+
+def load_symbolic_data() -> tuple[pd.DataFrame, pd.Series]:
+    """Load data prepared for symbolic rule extraction."""
+    x_train_symbolic = pd.read_csv(SYMBOLIC_DATA_DIR / "x_train_symbolic.csv")
+    y_train_symbolic = pd.read_csv(SYMBOLIC_DATA_DIR / "y_train_symbolic.csv")["Outcome"].astype(int)
+    return x_train_symbolic, y_train_symbolic
+
+
+# -----------------------------------------------------------------------------
+# DiCE
+# -----------------------------------------------------------------------------
 def make_permitted_range(
         x_train: pd.DataFrame,
         features: list[str],
@@ -64,6 +84,7 @@ def make_permitted_range(
     for f in features:
         permitted_ranges[f] = [float(quantiles.loc[q_low, f]), float(quantiles.loc[q_high, f])]
     return permitted_ranges
+
 
 def run_dice(  # noqa: PLR0913
         model: object,
@@ -187,7 +208,92 @@ def run_dice(  # noqa: PLR0913
     dice_exp.visualize_as_dataframe()
 
 
-# Implement PyGol symbolic rule extraction
+# -----------------------------------------------------------------------------
+# PyGol
+# -----------------------------------------------------------------------------
+def save_hypothesis(hypothesis: list[str], filename: str = "pygol_diabetes_rules.json") -> None:
+    """Save PyGol hypothesis (rules) to a JSON file."""
+    # Structure the data with metadata
+    data_to_save = {
+        "dataset": "diabetes.csv",
+        "parameters": {
+            "max_literals": 3,
+            "key_size": 10,
+            "min_pos": 7,
+            "max_neg": 0,
+        },
+        "hypothesis": hypothesis,
+    }
+
+    with (RULES_DIR / filename).open("w") as f:
+        json.dump(data_to_save, f, indent=2)
+
+    logger.info(f"PyGol hypothesis saved to {RULES_DIR / filename}")
+
+
+def run_pygol(
+        x_train_symbolic: pd.DataFrame,
+        y_train_symbolic: pd.Series,
+        feature_names: list[str],
+        target_name: str = "Outcome",
+    ) -> list[str]:
+    """Extract symbolic logical rules using PyGol on symbolic (unscaled, no-SMOTE) data."""
+    logger.info("Generating PyGol symbolic logical rules...")
+
+    # 1. Prepare data for PyGol
+    data = pd.concat(
+        [x_train_symbolic.reset_index(drop=True), y_train_symbolic.rename(target_name).reset_index(drop=True)],
+        axis=1,
+    )
+
+    # 2. Generate background knowledge
+    background = prepare_logic_rules(
+        data,
+        feature_names,
+        meta_information="meta_data.info",
+        default_div=4,
+        conditions={},
+    )
+
+    # 3. Generate example files (pos_example.f and neg_example.n)
+    examples = prepare_examples(data, target_name)
+
+    # 4. Generate constant list from meta information
+    const = read_constants_meta_info()
+
+    # 5. Generate bottom clauses
+    P, N = bottom_clause_generation(
+        file="BK.pl",
+        constant_set=const,
+        container="dict",
+        positive_example="pos_example.f",
+        negative_example="neg_example.n",
+    )
+
+    # 6. Split into train/test sets for PyGol
+    Train_P, Test_P, Train_N, Test_N = pygol_train_test_split(
+        test_size=0.25,
+        positive_file_dictionary=P,
+        negative_file_dictionary=N,
+    )
+
+    # 7. Perform Learning
+    model = pygol_learn(
+        Train_P,
+        Train_N,
+        max_literals=3,
+        key_size=10,
+        min_pos=7,
+        max_neg=0,
+    )
+
+    if model.hypothesis:
+        save_hypothesis(model.hypothesis)
+    else:
+        logger.warning("No hypothesis (rules) generated by PyGol.")
+
+    return model.hypothesis
+
 
 if __name__ == "__main__":
     set_seed(42)
@@ -196,8 +302,14 @@ if __name__ == "__main__":
     rf_model, mlp_model, x_train, y_train, x_test, y_test, feature_names = load_resources()
 
     # 1. Generate DiCE counterfactuals for both models
-    for i in range(10):
+    for i in range(3):
         run_dice(rf_model, x_train, y_train, x_test, feature_names, model_name="Random Forest", patient_idx=i)
         run_dice(mlp_model, x_train, y_train, x_test, feature_names, model_name="Multi-Layer Perceptron", patient_idx=i)
+
+    # Load symbolic data
+    x_train_symbolic, y_train_symbolic = load_symbolic_data()
+
+    # 2. Generate PyGol symbolic logical rules
+    rules = run_pygol(x_train_symbolic, y_train_symbolic, feature_names)
 
     logger.info("Explainability tasks completed.")
