@@ -18,6 +18,8 @@ from sklearn.preprocessing import StandardScaler
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
+SYMBOLIC_DIR = Path("../data/symbolic/")
+
 MEDICAL_COLS = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
 
 def load_data(file_path: str) -> pd.DataFrame:
@@ -93,6 +95,23 @@ def preprocess_and_split(  # noqa: PLR0913
     x_test_imputed = imputer.transform(x_test)
     if make_val and x_val is not None:
         x_val_imputed = imputer.transform(x_val)
+
+    # Save a copy of imputed data for PyGol
+    SYMBOLIC_DIR.mkdir(parents=True, exist_ok=True)
+
+    x_train_symbolic = pd.DataFrame(x_train_imputed, columns=x.columns)
+    x_test_symbolic = pd.DataFrame(x_test_imputed, columns=x.columns)
+    x_train_symbolic.to_csv(SYMBOLIC_DIR / "x_train_symbolic.csv", index=False)
+    x_test_symbolic.to_csv(SYMBOLIC_DIR / "x_test_symbolic.csv", index=False)
+
+    y_train.reset_index(drop=True).to_csv(SYMBOLIC_DIR / "y_train_symbolic.csv", index=False)
+    y_test.reset_index(drop=True).to_csv(SYMBOLIC_DIR / "y_test_symbolic.csv", index=False)
+    if make_val and x_val is not None:
+        x_val_symbolic = pd.DataFrame(x_val_imputed, columns=x.columns)
+        x_val_symbolic.to_csv(SYMBOLIC_DIR / "x_val_symbolic.csv", index=False)
+        y_val.reset_index(drop=True).to_csv(SYMBOLIC_DIR / "y_val_symbolic.csv", index=False)
+
+    logger.info(f"Imputed symbolic data saved to {SYMBOLIC_DIR}")
 
     # 4. Address class imbalance with SMOTE
     smote = SMOTE(random_state=seed)
