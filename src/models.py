@@ -64,7 +64,7 @@ def train_rf(
     }
 
     rf_model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=-1)
+    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=2, verbose=2)
     grid_search.fit(x_train, y_train)
 
     best_rf = grid_search.best_estimator_
@@ -113,7 +113,7 @@ def train_mlp(  # noqa: PLR0913
 
     # 1. Weighted Loss: handle class imbalance
     model = MLP(x_train.shape[1]).to(device)
-    pos_weight = torch.tensor([(y_train == 0).sum() / (y_train == 1).sum()], dtype=torch.float32)
+    pos_weight = torch.tensor([(y_train == 0).sum() / (y_train == 1).sum()], dtype=torch.float32).to(device)
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     optimiser = optim.Adam(model.parameters(), lr=lr)
 
