@@ -4,13 +4,14 @@ import logging
 import pickle
 import random
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import torch
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, f1_score
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 from torch import nn, optim
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -56,20 +57,32 @@ def train_rf(
     """Train a Random Forest Classifier using training data."""
     logger.info("Starting Random Forest training with 5-Fold CV...")
 
-    param_grid = {
-        "n_estimators": [100, 200, 300],
-        "max_depth": [None, 10, 15],
-        "min_samples_leaf": [1, 2, 4],
+    param_grid: dict[str, Any] ={
+        "n_estimators": [200, 400, 600, 800, 1000, 1200],
+        "max_depth": [None, 5, 10, 20, 30, 40],
+        "min_samples_split": [2, 5, 10, 15],
+        "min_samples_leaf": [1, 2, 4, 6],
+        "max_features": ["sqrt", "log2", None],
+        "bootstrap": [True, False],
         "class_weight": ["balanced", "balanced_subsample"],
     }
 
     rf_model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=2, verbose=2)
-    grid_search.fit(x_train, y_train)
 
-    best_rf = grid_search.best_estimator_
-    logger.info(f"Best Random Forest Parameters: {grid_search.best_params_}")
-    logger.info(f"Best Random Forest CV Score: {grid_search.best_score_:.4f}")
+    search = RandomizedSearchCV(
+        estimator=rf_model,
+        param_distributions=param_grid,
+        cv=5,
+        scoring="average_precision",
+        n_jobs=2,
+        verbose=2,
+        random_state=42,
+    )
+    search.fit(x_train, y_train)
+
+    best_rf = search.best_estimator_
+    logger.info(f"Best Random Forest Parameters: {search.best_params_}")
+    logger.info(f"Best Random Forest CV Score: {search.best_score_:.4f}")
 
     with (MODELS_DIR / "rf_model.pkl").open("wb") as f:
         pickle.dump(best_rf, f)
@@ -82,18 +95,18 @@ def train_rf(
 class MLP(nn.Module):
     """Multi-Layer Perceptron for binary classification."""
 
-    def __init__(self, input_size: int) -> None:
+    def __init__(self, input_size: int, hidden_size: int = 32, dropout: float = 0.2) -> None:
         """Initialise the MLP model."""
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(input_size, 32),
-            nn.BatchNorm1d(32),
+            nn.Linear(input_size, hidden_size),
+            nn.BatchNorm1d(hidden_size),
             nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(32, 16),
-            nn.BatchNorm1d(16),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_size, hidden_size // 2),
+            nn.BatchNorm1d(hidden_size // 2),
             nn.ReLU(),
-            nn.Linear(16, 1),
+            nn.Linear(hidden_size // 2, 1),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -107,12 +120,14 @@ def train_mlp(  # noqa: PLR0913
         y_val: np.ndarray,
         epochs: int = 200,
         lr: float = 1e-2,
+        hidden_size: int = 32,
+        dropout: float = 0.2,
     ) -> MLP:
     """Train a Multi-Layer Perceptron model using training data."""
     logger.info("Starting MLP training...")
 
     # 1. Weighted Loss: handle class imbalance
-    model = MLP(x_train.shape[1]).to(device)
+    model = MLP(x_train.shape[1], hidden_size, dropout).to(device)
     pos_weight = torch.tensor([(y_train == 0).sum() / (y_train == 1).sum()], dtype=torch.float32).to(device)
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     optimiser = optim.Adam(model.parameters(), lr=lr)
