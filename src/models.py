@@ -21,6 +21,8 @@ MODELS_DIR = Path("../models")
 MODELS_DIR.mkdir(exist_ok=True)
 METRICS_DIR = Path("../results/metrics")
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
     """Load preprocessed train/val/test datasets."""
     x_train = pd.read_csv(DATA_DIR / "x_train.csv")
@@ -110,19 +112,19 @@ def train_mlp(  # noqa: PLR0913
     logger.info("Starting MLP training...")
 
     # 1. Weighted Loss: handle class imbalance
-    model = MLP(x_train.shape[1])
+    model = MLP(x_train.shape[1]).to(device)
     pos_weight = torch.tensor([(y_train == 0).sum() / (y_train == 1).sum()], dtype=torch.float32)
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     optimiser = optim.Adam(model.parameters(), lr=lr)
 
     # 2. LR Scheduler: reduces learning rate on plateau of validation loss
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimiser, mode="min", factor=0.1, patience=10)
 
     # Convert data to tensors
-    x_train_tensor = torch.tensor(x_train.values, dtype=torch.float32)
-    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).view(-1, 1)
-    x_val_tensor = torch.tensor(x_val.values, dtype=torch.float32)
-    y_val_tensor = torch.tensor(y_val, dtype=torch.float32).view(-1, 1)
+    x_train_tensor = torch.tensor(x_train.values, dtype=torch.float32).to(device)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).view(-1, 1).to(device)
+    x_val_tensor = torch.tensor(x_val.values, dtype=torch.float32).to(device)
+    y_val_tensor = torch.tensor(y_val, dtype=torch.float32).view(-1, 1).to(device)
 
     best_val_loss = float("inf")
     early_stop_patience = 20
@@ -173,8 +175,8 @@ def predict_probs(model: nn.Module, x: pd.DataFrame, is_pytorch: bool) -> np.nda
     if is_pytorch:
         model.eval()
         with torch.no_grad():
-            logits = model(torch.tensor(x.values, dtype=torch.float32))
-            return torch.sigmoid(logits).numpy().ravel()
+            logits = model(torch.tensor(x.values, dtype=torch.float32).to(device))
+            return torch.sigmoid(logits).cpu().numpy().ravel()
     return model.predict_proba(x)[:, 1]
 
 def evaluate(y_true: np.ndarray, probs: np.ndarray, threshold: float) -> tuple[float, str]:
