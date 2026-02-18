@@ -11,6 +11,7 @@ import torch
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import GridSearchCV
+from sklearn.tree import DecisionTreeClassifier
 from torch import nn, optim
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -47,7 +48,7 @@ def set_seed(seed: int = 42) -> None:
     torch.backends.cudnn.benchmark = False
     logger.info(f"Global seed set to {seed}")
 
-# --- Random Forest ---
+# --- Random Forest (RF) ---
 
 def train_rf(
             x_train: pd.DataFrame,
@@ -58,13 +59,14 @@ def train_rf(
 
     param_grid = {
         "n_estimators": [100, 200, 300],
-        "max_depth": [None, 10, 15],
+        "max_depth": [None, 10, 20],
+        "min_samples_split": [2, 5, 10],
         "min_samples_leaf": [1, 2, 4],
         "class_weight": ["balanced", "balanced_subsample"],
     }
 
     rf_model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=2, verbose=2)
+    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=2)
     grid_search.fit(x_train, y_train)
 
     best_rf = grid_search.best_estimator_
@@ -76,6 +78,34 @@ def train_rf(
     logger.info("RF model saved to ../models/rf_model.pkl")
 
     return best_rf
+
+
+# --- Decision Tree (DT) ---
+
+def train_dt(x_train: pd.DataFrame, y_train: np.ndarray) -> DecisionTreeClassifier:
+    """Train a Decision Tree Classifier using training data."""
+    logger.info("Starting Decision Tree training with 5-Fold CV...")
+
+    param_grid = {
+        "max_depth": [None, 10, 20, 30],
+        "min_samples_split": [2, 5, 10],
+        "min_samples_leaf": [1, 2, 4],
+    }
+
+    dt_model = DecisionTreeClassifier(random_state=42)
+    grid_search = GridSearchCV(dt_model, param_grid, cv=5, scoring="average_precision")
+    grid_search.fit(x_train, y_train)
+
+    best_dt = grid_search.best_estimator_
+    logger.info(f"Best Decision Tree Parameters: {grid_search.best_params_}")
+
+    # Save the best model
+    with (MODELS_DIR / "dt_model.pkl").open("wb") as f:
+        pickle.dump(best_dt, f)
+    logger.info("DT model saved to ../models/dt_model.pkl")
+
+    return best_dt
+
 
 # --- Multi-Layer Perceptron (MLP) ---
 
@@ -168,6 +198,7 @@ def train_mlp(  # noqa: PLR0913
     model.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
     return model
 
+
 # Evaluation helpers
 
 def predict_probs(model: nn.Module, x: pd.DataFrame, is_pytorch: bool) -> np.ndarray:
@@ -195,6 +226,7 @@ def load_thresholds() -> dict[str, float] | None:
         return {"rf": float(data["rf_threshold"]), "mlp": float(data["mlp_threshold"])}
     return None
 
+
 if __name__ == "__main__":
     set_seed(42)
     try:
@@ -203,30 +235,40 @@ if __name__ == "__main__":
         # Train models using training data only
         rf_model = train_rf(x_train, y_train)
         logger.info("-" * 50)
+        dt_model = train_dt(x_train, y_train)
+        logger.info("-" * 50)
         mlp_model = train_mlp(x_train, y_train, x_val, y_val , epochs=500, lr=1e-2)
         logger.info("-" * 50)
 
         rf_val_probs = predict_probs(rf_model, x_val, is_pytorch=False)
         mlp_val_probs = predict_probs(mlp_model, x_val, is_pytorch=True)
+        dt_val_probs = predict_probs(dt_model, x_val, is_pytorch=False)
         rf_test_probs = predict_probs(rf_model, x_test, is_pytorch=False)
         mlp_test_probs = predict_probs(mlp_model, x_test, is_pytorch=True)
+        dt_test_probs = predict_probs(dt_model, x_test, is_pytorch=False)
 
         rf_val_f1, rf_val_rep = evaluate(y_val, rf_val_probs, threshold=0.5)
+        dt_val_f1, dt_val_rep = evaluate(y_val, dt_val_probs, threshold=0.5)
         mlp_val_f1, mlp_val_rep = evaluate(y_val, mlp_val_probs, threshold=0.5)
 
         logger.info("Validation Set (threshold=0.5)")
         logger.info(f"Random Forest F1: {rf_val_f1:.4f}")
         logger.info(rf_val_rep)
+        logger.info(f"Decision Tree F1: {dt_val_f1:.4f}")
+        logger.info(dt_val_rep)
         logger.info(f"Multi-Layer Perceptron F1: {mlp_val_f1:.4f}")
         logger.info(mlp_val_rep)
         logger.info("-" * 50)
 
         rf_test_f1, rf_test_rep = evaluate(y_test, rf_test_probs, threshold=0.5)
+        dt_test_f1, dt_test_rep = evaluate(y_test, dt_test_probs, threshold=0.5)
         mlp_test_f1, mlp_test_rep = evaluate(y_test, mlp_test_probs, threshold=0.5)
 
         logger.info("Test Set (threshold=0.5)")
         logger.info(f"Random Forest F1: {rf_test_f1:.4f}")
         logger.info(rf_test_rep)
+        logger.info(f"Decision Tree F1: {dt_test_f1:.4f}")
+        logger.info(dt_test_rep)
         logger.info(f"Multi-Layer Perceptron F1: {mlp_test_f1:.4f}")
         logger.info(mlp_test_rep)
         logger.info("-" * 50)
@@ -236,10 +278,13 @@ if __name__ == "__main__":
             logger.info("Test Set (tuned thresholds from thresholds.json)")
 
             rf_tuned_f1, rf_tuned_rep = evaluate(y_test, rf_test_probs, threshold=thresholds["rf"])
+            dt_tuned_f1, dt_tuned_rep = evaluate(y_test, dt_test_probs, threshold=thresholds["dt"])
             mlp_tuned_f1, mlp_tuned_rep = evaluate(y_test, mlp_test_probs, threshold=thresholds["mlp"])
 
             logger.info(f"Random Forest F1 (threshold={thresholds['rf']:.4f}): {rf_tuned_f1:.4f}")
             logger.info(rf_tuned_rep)
+            logger.info(f"Decision Tree F1 (threshold={thresholds['dt']:.4f}): {dt_tuned_f1:.4f}")
+            logger.info(dt_tuned_rep)
             logger.info(f"Multi-Layer Perceptron F1 (threshold={thresholds['mlp']:.4f}): {mlp_tuned_f1:.4f}")
             logger.info(mlp_tuned_rep)
         else:

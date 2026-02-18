@@ -81,7 +81,12 @@ if __name__ == "__main__":
             rf_model = pickle.load(f)
     rf_val_probs = rf_model.predict_proba(x_val)[:, 1]
 
-    # 2. Multi-Layer Perceptron Predictions
+    # 2. Decision Tree Predictions
+    with (MODELS_DIR / "dt_model.pkl").open("rb") as f:
+            dt_model = pickle.load(f)
+    dt_val_probs = dt_model.predict_proba(x_val)[:, 1]
+
+    # 3. Multi-Layer Perceptron Predictions
     mlp = MLP(x_val.shape[1])
     state = torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True)
     mlp.load_state_dict(state)
@@ -92,13 +97,16 @@ if __name__ == "__main__":
 
     # 3. Find Optimal Thresholds
     rf_thresh, rf_ts, rf_f1s, rf_best_f1 = find_optimal_threshold(y_val, rf_val_probs, model_name="Random Forest")
+    dt_thresh, dt_ts, dt_f1s, dt_best_f1 = find_optimal_threshold(y_val, dt_val_probs, model_name="Decision Tree")
     mlp_thresh, mlp_ts, mlp_f1s, mlp_best_f1 = find_optimal_threshold(y_val, mlp_val_probs, model_name="Multi-Layer Perceptron")  # noqa: E501
 
     # 4. Save Artifacts
     thresholds = {
         "rf_threshold": rf_thresh,
+        "dt_threshold": dt_thresh,
         "mlp_threshold": mlp_thresh,
         "rf_best_f1": rf_best_f1,
+        "dt_best_f1": dt_best_f1,
         "mlp_best_f1": mlp_best_f1,
         "tuned_on": "validation",
     }
@@ -112,6 +120,7 @@ if __name__ == "__main__":
     # Subplot 1: F1-Score vs Threshold
     plt.subplot(1, 2, 1)
     plt.plot(rf_ts, rf_f1s, label=f"RF (best={rf_thresh:.2f})")
+    plt.plot(dt_ts, dt_f1s, label=f"DT (best={dt_thresh:.2f})")
     plt.plot(mlp_ts, mlp_f1s, label=f"MLP (best={mlp_thresh:.2f})")
     plt.axvline(0.5, color="red", linestyle="--", label="Default 0.5")
     plt.xlabel("Threshold")
@@ -121,7 +130,7 @@ if __name__ == "__main__":
 
     # Subplot 2: Calibration Curve
     plt.subplot(1, 2, 2)
-    for name, probs in [("RF", rf_val_probs), ("MLP", mlp_val_probs)]:
+    for name, probs in [("RF", rf_val_probs), ("DT", dt_val_probs), ("MLP", mlp_val_probs)]:
         prob_true, prob_pred = calibration_curve(y_val, probs, n_bins=10)
         plt.plot(prob_pred, prob_true, marker="o", label=name)
     plt.plot([0, 1], [0, 1], linestyle="--", color="gray", label="Perfectly Calibrated")
@@ -141,6 +150,9 @@ if __name__ == "__main__":
 
     rf_test_probs = rf_model.predict_proba(x_test)[:, 1]
     evaluate_with_calibration(y_test, rf_test_probs, rf_thresh, name="Random Forest (Test)")
+
+    dt_test_probs = dt_model.predict_proba(x_test)[:, 1]
+    evaluate_with_calibration(y_test, dt_test_probs, dt_thresh, name="Decision Tree (Test)")
 
     with torch.no_grad():
         mlp_test_logits = mlp(torch.tensor(x_test.values, dtype=torch.float32))

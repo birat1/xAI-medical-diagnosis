@@ -18,6 +18,7 @@ from PyGol import (
     evaluate_theory_prolog,
     prepare_examples,
     prepare_logic_rules,
+    print_rules,
     pygol_learn,
     pygol_train_test_split,
     read_constants_meta_info,
@@ -55,12 +56,16 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFr
     with Path(MODELS_DIR / "rf_model.pkl").open("rb") as f:
         rf_model = pickle.load(f)
 
-    # 4. Load MLP
+    # 4. Load Decision Tree
+    with Path(MODELS_DIR / "dt_model.pkl").open("rb") as f:
+        dt_model = pickle.load(f)
+
+    # 5. Load MLP
     mlp_model = MLP(input_size=len(feature_names))
     mlp_model.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
     mlp_model.eval()
 
-    return rf_model, mlp_model, x_train, y_train, x_test, y_test, feature_names
+    return rf_model, dt_model, mlp_model, x_train, y_train, x_test, y_test, feature_names
 
 
 def load_symbolic_data() -> tuple[pd.DataFrame, pd.Series]:
@@ -138,7 +143,7 @@ def run_dice(  # noqa: PLR0913
             ("random", {}),
         ]
     else:
-        # Random Forest model
+        # Random Forest/Decision Tree
         m = dice_ml.Model(model=model, backend="sklearn")
         methods = [
             ("random", {}),
@@ -218,9 +223,9 @@ def save_hypothesis(hypothesis: list[str], filename: str = "pygol_diabetes_rules
     data_to_save = {
         "dataset": "diabetes.csv",
         "parameters": {
-            "max_literals": 3,
-            "key_size": 10,
-            "min_pos": 7,
+            "max_literals": 4,
+            "key_size": 1,
+            "min_pos": 2,
             "max_neg": 0,
         },
         "hypothesis": hypothesis,
@@ -252,7 +257,7 @@ def run_pygol(
         data,
         feature_names,
         meta_information="meta_data.info",
-        default_div=4,
+        default_div=5,
         conditions={},
     )
 
@@ -282,11 +287,13 @@ def run_pygol(
     model = pygol_learn(
         Train_P,
         Train_N,
-        max_literals=3,
+        max_literals=4,
         key_size=1,
-        min_pos=10,
+        min_pos=2,
         max_neg=0,
     )
+
+    # print_rules(model.hypothesis, meta_information = "meta_data.info")
 
     if model.hypothesis:
         save_hypothesis(model.hypothesis)
@@ -300,12 +307,15 @@ if __name__ == "__main__":
     set_seed(42)
 
     # Load resources
-    rf_model, mlp_model, x_train, y_train, x_test, y_test, feature_names = load_resources()
+    rf_model, dt_model, mlp_model, x_train, y_train, x_test, y_test, feature_names = load_resources()
 
+    """
     # 1. Generate DiCE counterfactuals for both models
     for i in range(3):
         run_dice(rf_model, x_train, y_train, x_test, feature_names, model_name="Random Forest", patient_idx=i)
+        run_dice(dt_model, x_train, y_train, x_test, feature_names, model_name="Decision Tree", patient_idx=i)
         run_dice(mlp_model, x_train, y_train, x_test, feature_names, model_name="Multi-Layer Perceptron", patient_idx=i)
+    """
 
     # Load symbolic data
     x_train_symbolic, y_train_symbolic = load_symbolic_data()

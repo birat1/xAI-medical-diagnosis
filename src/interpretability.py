@@ -37,12 +37,16 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, list[str]
     with Path(MODELS_DIR / "rf_model.pkl").open("rb") as f:
         rf_model = pickle.load(f)
 
-    # 4. Load MLP
+    # 4. Load Decision Tree
+    with Path(MODELS_DIR / "dt_model.pkl").open("rb") as f:
+        dt_model = pickle.load(f)
+
+    # 5. Load MLP
     mlp_model = MLP(input_size=len(feature_names))
     mlp_model.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
     mlp_model.eval()
 
-    return rf_model, mlp_model, x_train, x_test, feature_names
+    return rf_model, dt_model, mlp_model, x_train, x_test, feature_names
 
 
 def run_shap(model: object, x_test: pd.DataFrame, feature_names: list[str], name: str = "Random Forest") -> None:
@@ -107,7 +111,7 @@ def run_lime(  # noqa: PLR0913
                 logits = model(torch.tensor(x, dtype=torch.float32))
                 probs = torch.sigmoid(logits).numpy()
                 return np.hstack((1 - probs, probs))
-    # If model is Random Forest
+    # If model is Random Forest or Decision Tree
     else:
 
         def predict_fn(x: np.ndarray) -> np.ndarray:
@@ -134,14 +138,17 @@ def run_lime(  # noqa: PLR0913
 
 if __name__ == "__main__":
     set_seed(42)
-    rf, mlp, x_train, x_test, features = load_resources()
+    rf, dt, mlp, x_train, x_test, features = load_resources()
 
     test_indices = [0, 1, 2, 3, 4]
 
     # 1. Interpret Random Forest
     run_shap(rf, x_test, features, name="Random Forest")
     run_lime(rf, x_train, x_test, features, test_indices, name="Random Forest")
-    # 2. Interpret MLP
+    # 2. Interpret Decision Tree
+    run_shap(dt, x_test, features, name="Decision Tree")
+    run_lime(dt, x_train, x_test, features, test_indices, name="Decision Tree")
+    # 3. Interpret MLP
     run_shap(mlp, x_test, features, name="Multi-Layer Perceptron")
     run_lime(mlp, x_train, x_test, features, test_indices, name="Multi-Layer Perceptron")
 

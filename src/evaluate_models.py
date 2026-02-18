@@ -25,26 +25,31 @@ def load_test() -> tuple[pd.DataFrame, np.ndarray]:
     logger.info("Test data loaded successfully.")
     return x_test, y_test
 
-def load_thresholds() -> tuple[float, float]:
+def load_thresholds() -> tuple[float, float, float]:
     """Load optimal thresholds for models."""
     with (METRICS_DIR / "thresholds.json").open("r") as f:
         data = json.load(f)
-    return float(data["rf_threshold"]), float(data["mlp_threshold"])
+    return float(data["rf_threshold"]), float(data["dt_threshold"]), float(data["mlp_threshold"])
 
-def rf_probs(x: pd.DataFrame) -> np.ndarray:
-    """Load trained Random Forest model and predict probabilities."""
-    with (MODELS_DIR / "rf_model.pkl").open("rb") as f:
-        rf_model = pickle.load(f)
-    return rf_model.predict_proba(x)[:, 1]
+def get_probs(model_name: str, x: pd.DataFrame) -> np.ndarray:
+    """Get predicted probabilities for a given model."""
+    model_path = MODELS_DIR / model_name
 
-def mlp_probs(x: pd.DataFrame) -> np.ndarray:
-    """Load trained MLP model and predict probabilities."""
-    mlp = MLP(x.shape[1])
-    mlp.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
-    mlp.eval()
-    with torch.no_grad():
-        logits = mlp(torch.tensor(x.values, dtype=torch.float32))
-        return torch.sigmoid(logits).numpy().ravel()
+    if model_path.suffix == ".pkl":
+        with model_path.open("rb") as f:
+            model = pickle.load(f)
+        return model.predict_proba(x)[:, 1]
+
+    if model_path.suffix == ".pth":
+        mlp = MLP(x.shape[1])
+        mlp.load_state_dict(torch.load(model_path, weights_only=True))
+        mlp.eval()
+        with torch.no_grad():
+            logits = mlp(torch.tensor(x.values, dtype=torch.float32))
+            return torch.sigmoid(logits).numpy().ravel()
+
+    raise ValueError(f"Unsupported model format: {model_path.suffix}")  # noqa: EM102, TRY003
+
 
 def get_metrics(name: str, y: np.ndarray, probs: np.ndarray, threshold: float) -> dict:
     """Calculate and log evaluation metrics."""
@@ -68,15 +73,32 @@ def get_metrics(name: str, y: np.ndarray, probs: np.ndarray, threshold: float) -
 if __name__ == "__main__":
     try:
         x_test, y_test = load_test()
-        rf_threshold, mlp_threshold = load_thresholds()
+        rf_threshold, dt_threshold, mlp_threshold = load_thresholds()
 
-        # Generate metrics for both models
-        rf_results = get_metrics("Random Forest (Test)", y_test, rf_probs(x_test), rf_threshold)
-        mlp_results = get_metrics("Multi-Layer Perceptron (Test)", y_test, mlp_probs(x_test), mlp_threshold)
+        # Generate metrics for all models
+        rf_results = get_metrics(
+            "Random Forest (Test)",
+            y_test,
+            get_probs("rf_model.pkl", x_test),
+            rf_threshold,
+        )
+        dt_results = get_metrics(
+            "Decision Tree (Test)",
+            y_test,
+            get_probs("dt_model.pkl", x_test),
+            dt_threshold,
+        )
+        mlp_results = get_metrics(
+            "Multi-Layer Perceptron (Test)",
+            y_test,
+            get_probs("mlp_model.pth", x_test),
+            mlp_threshold,
+        )
 
         # Save results to JSON
         final_results = {
             "random_forest": rf_results,
+            "decision_tree": dt_results,
             "mlp": mlp_results,
         }
 
