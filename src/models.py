@@ -57,7 +57,7 @@ def train_rf(
     """Train a Random Forest Classifier using training data."""
     logger.info("Starting Random Forest training with 5-Fold CV...")
 
-    param_grid = {
+    best_params = {
         "n_estimators": [100, 200, 300],
         "max_depth": [None, 10, 20],
         "min_samples_split": [2, 5, 10],
@@ -65,21 +65,25 @@ def train_rf(
         "class_weight": ["balanced", "balanced_subsample"],
     }
 
-    rf_model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=-1, verbose=2)
-    grid_search.fit(x_train, y_train)
+    rf_model = RandomForestClassifier(
+        n_estimators=300,
+        max_depth=20,
+        min_samples_leaf=1,
+        min_samples_split=2,
+        class_weight="balanced",
+        random_state=42,
+    )
+    rf_model.fit(x_train, y_train)
 
-    best_rf = grid_search.best_estimator_
     logger.info("-" * 50)
-    logger.info(f"Best Random Forest Parameters: {grid_search.best_params_}")
-    logger.info(f"Best Random Forest CV Score: {grid_search.best_score_:.4f}")
-    logger.info("-" * 50)
+    logger.info(f"Best Random Forest CV Score: {rf_model.score(x_train, y_train):.4f}")
 
     with (MODELS_DIR / "rf_model.pkl").open("wb") as f:
-        pickle.dump(best_rf, f)
+        pickle.dump(rf_model, f)
     logger.info("RF model saved to ../models/rf_model.pkl")
+    logger.info("-" * 50)
 
-    return best_rf
+    return rf_model
 
 
 # --- Decision Tree (DT) ---
@@ -88,28 +92,24 @@ def train_dt(x_train: pd.DataFrame, y_train: np.ndarray) -> DecisionTreeClassifi
     """Train a Decision Tree Classifier using training data."""
     logger.info("Starting Decision Tree training with 5-Fold CV...")
 
-    param_grid = {
-        "max_depth": [None, 10, 20, 30],
-        "min_samples_split": [2, 5, 10],
-        "min_samples_leaf": [1, 2, 4],
-    }
+    dt_model = DecisionTreeClassifier(
+        max_depth=None,
+        min_samples_leaf=4,
+        min_samples_split=10,
+        random_state=42,
+    )
+    dt_model.fit(x_train, y_train)
 
-    dt_model = DecisionTreeClassifier(random_state=42)
-    grid_search = GridSearchCV(dt_model, param_grid, cv=5, scoring="average_precision", n_jobs=-1, verbose=2)
-    grid_search.fit(x_train, y_train)
-
-    best_dt = grid_search.best_estimator_
     logger.info("-" * 50)
-    logger.info(f"Best Decision Tree Parameters: {grid_search.best_params_}")
-    logger.info(f"Best Decision Tree CV Score: {grid_search.best_score_:.4f}")
-    logger.info("-" * 50)
+    logger.info(f"Best Decision Tree CV Score: {dt_model.score(x_train, y_train):.4f}")
 
     # Save the best model
     with (MODELS_DIR / "dt_model.pkl").open("wb") as f:
-        pickle.dump(best_dt, f)
+        pickle.dump(dt_model, f)
     logger.info("DT model saved to ../models/dt_model.pkl")
+    logger.info("-" * 50)
 
-    return best_dt
+    return dt_model
 
 
 # --- Multi-Layer Perceptron (MLP) ---
