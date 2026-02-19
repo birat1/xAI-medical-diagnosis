@@ -70,8 +70,10 @@ def train_rf(
     grid_search.fit(x_train, y_train)
 
     best_rf = grid_search.best_estimator_
+    logger.info("-" * 50)
     logger.info(f"Best Random Forest Parameters: {grid_search.best_params_}")
     logger.info(f"Best Random Forest CV Score: {grid_search.best_score_:.4f}")
+    logger.info("-" * 50)
 
     with (MODELS_DIR / "rf_model.pkl").open("wb") as f:
         pickle.dump(best_rf, f)
@@ -97,7 +99,10 @@ def train_dt(x_train: pd.DataFrame, y_train: np.ndarray) -> DecisionTreeClassifi
     grid_search.fit(x_train, y_train)
 
     best_dt = grid_search.best_estimator_
+    logger.info("-" * 50)
     logger.info(f"Best Decision Tree Parameters: {grid_search.best_params_}")
+    logger.info(f"Best Decision Tree CV Score: {grid_search.best_score_:.4f}")
+    logger.info("-" * 50)
 
     # Save the best model
     with (MODELS_DIR / "dt_model.pkl").open("wb") as f:
@@ -221,9 +226,13 @@ def load_thresholds() -> dict[str, float] | None:
         return None
     with (METRICS_DIR / "thresholds.json").open("r") as f:
         data = json.load(f)
-        # expected keys: rf_threshold, mlp_threshold
-    if "rf_threshold" in data and "mlp_threshold" in data:
-        return {"rf": float(data["rf_threshold"]), "mlp": float(data["mlp_threshold"])}
+        # expected keys: rf_threshold, dt_threshold, mlp_threshold
+    if "rf_threshold" in data and "dt_threshold" in data and "mlp_threshold" in data:
+        return {
+            "rf": float(data["rf_threshold"]),
+            "dt": float(data["dt_threshold"]),
+            "mlp": float(data["mlp_threshold"]),
+        }
     return None
 
 
