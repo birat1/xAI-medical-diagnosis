@@ -302,13 +302,11 @@ if __name__ == "__main__":
     # Load resources
     rf_model, dt_model, mlp_model, x_train, y_train, x_test, y_test, feature_names = load_resources()
 
-    """
     # 1. Generate DiCE counterfactuals for both models
     for i in range(3):
         run_dice(rf_model, x_train, y_train, x_test, feature_names, model_name="Random Forest", patient_idx=i)
         run_dice(dt_model, x_train, y_train, x_test, feature_names, model_name="Decision Tree", patient_idx=i)
         run_dice(mlp_model, x_train, y_train, x_test, feature_names, model_name="Multi-Layer Perceptron", patient_idx=i)
-    """
 
     # Load symbolic data
     x_train_symbolic, y_train_symbolic = load_symbolic_data()
