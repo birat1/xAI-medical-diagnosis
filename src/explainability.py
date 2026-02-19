@@ -221,13 +221,6 @@ def save_hypothesis(hypothesis: list[str], filename: str = "pygol_diabetes_rules
     """Save PyGol hypothesis (rules) to a JSON file."""
     # Structure the data with metadata
     data_to_save = {
-        "dataset": "diabetes.csv",
-        "parameters": {
-            "max_literals": 4,
-            "key_size": 1,
-            "min_pos": 2,
-            "max_neg": 0,
-        },
         "hypothesis": hypothesis,
     }
 
@@ -278,7 +271,7 @@ def run_pygol(
 
     # 6. Split into train/test sets for PyGol
     Train_P, Test_P, Train_N, Test_N = pygol_train_test_split(
-        test_size=0.3,
+        test_size=0.25,
         positive_file_dictionary=P,
         negative_file_dictionary=N,
     )
