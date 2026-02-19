@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from imblearn.over_sampling import SMOTE
 from sklearn.experimental import enable_iterative_imputer  # noqa: F401
 from sklearn.impute import IterativeImputer
 from sklearn.model_selection import train_test_split
@@ -113,13 +112,9 @@ def preprocess_and_split(  # noqa: PLR0913
 
     logger.info(f"Imputed symbolic data saved to {SYMBOLIC_DIR}")
 
-    # 4. Address class imbalance with SMOTE
-    smote = SMOTE(random_state=seed)
-    x_train_res, y_train_res = smote.fit_resample(x_train_imputed, y_train)
-
-    # 5. Normalisation / Scaling
+    # 4. Normalisation / Scaling
     scaler = StandardScaler()
-    x_train_scaled = pd.DataFrame(scaler.fit_transform(x_train_res), columns=x.columns)
+    x_train_scaled = pd.DataFrame(scaler.fit_transform(x_train_imputed), columns=x.columns)
     x_test_scaled = pd.DataFrame(scaler.transform(x_test_imputed), columns=x.columns)
     if make_val and x_val is not None:
         x_val_scaled = pd.DataFrame(scaler.transform(x_val_imputed), columns=x.columns)
@@ -127,7 +122,7 @@ def preprocess_and_split(  # noqa: PLR0913
         x_val_scaled = None
 
     logger.info(
-        "Completed preprocessing with IterativeImputer and SMOTE.\n"
+        "Completed preprocessing with IterativeImputer.\n"
         f"Train size: {len(x_train_scaled)} | "
         f"Val size: {len(x_val_scaled) if x_val_scaled is not None else 0} | "
         f"Test size: {len(x_test_scaled)}"  # noqa: COM812
@@ -144,7 +139,7 @@ def preprocess_and_split(  # noqa: PLR0913
 
     return {
         "x_train": x_train_scaled,
-        "y_train": y_train_res.reset_index(drop=True),
+        "y_train": y_train.reset_index(drop=True),
         "x_val": x_val_scaled,
         "y_val": y_val.reset_index(drop=True) if y_val is not None else None,
         "x_test": x_test_scaled,
