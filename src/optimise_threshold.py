@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 from sklearn.calibration import calibration_curve
-from sklearn.metrics import average_precision_score, classification_report, f1_score, precision_recall_curve
+from sklearn.metrics import average_precision_score, precision_recall_curve
 
 from models import MLP
 
@@ -41,35 +41,6 @@ def find_optimal_threshold(
     logger.info(f"Max F1-Score at this threshold: {best_f1:.4f}")
 
     return best_threshold, thresholds, f1_scores[:-1], best_f1
-
-# MLP
-def predict_mlp_probs(x: pd.DataFrame) -> np.ndarray:
-    """Predict probabilities using the saved MLP model."""
-    mlp = MLP(x.shape[1])
-    state = torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True)
-    mlp.load_state_dict(state)
-    mlp.eval()
-    with torch.no_grad():
-        logits = mlp(torch.tensor(x.values, dtype=torch.float32))
-        return torch.sigmoid(logits).numpy().ravel()
-
-# Evaluation
-def evaluate_with_calibration(
-        y_true: np.ndarray,
-        probs: np.ndarray,
-        threshold: float,
-        name: str,
-    ) -> tuple[np.ndarray, np.ndarray]:
-    """Evaluate model performance including calibration analysis."""
-    preds = (probs >= threshold).astype(int)
-
-    prob_true, prob_pred = calibration_curve(y_true, probs, n_bins=10)
-
-    logger.info(f"\n--- {name} Final Evaluation (threshold {threshold:.4f}) ---")
-    logger.info(f"F1-Score: {f1_score(y_true, preds):.4f}")
-    logger.info(classification_report(y_true, preds))
-
-    return prob_true, prob_pred
 
 if __name__ == "__main__":
     # Load Validation Set
@@ -142,19 +113,3 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(METRICS_DIR / "optimisation_results.png")
     logger.info(f"\nPlot saved to {METRICS_DIR / 'optimisation_results.png'}")
-
-    # 6. Final Evaluation on Test Set
-    logger.info("-" * 50)
-    x_test = pd.read_csv(DATA_DIR / "x_test.csv")
-    y_test = pd.read_csv(DATA_DIR / "y_test.csv").to_numpy().ravel()
-
-    rf_test_probs = rf_model.predict_proba(x_test)[:, 1]
-    evaluate_with_calibration(y_test, rf_test_probs, rf_thresh, name="Random Forest (Test)")
-
-    dt_test_probs = dt_model.predict_proba(x_test)[:, 1]
-    evaluate_with_calibration(y_test, dt_test_probs, dt_thresh, name="Decision Tree (Test)")
-
-    with torch.no_grad():
-        mlp_test_logits = mlp(torch.tensor(x_test.values, dtype=torch.float32))
-        mlp_test_probs = torch.sigmoid(mlp_test_logits).numpy().ravel()
-    evaluate_with_calibration(y_test, mlp_test_probs, mlp_thresh, name="Multi-Layer Perceptron (Test)")
