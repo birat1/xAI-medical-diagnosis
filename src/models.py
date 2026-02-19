@@ -66,7 +66,7 @@ def train_rf(
     }
 
     rf_model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=2)
+    grid_search = GridSearchCV(rf_model, param_grid, cv=5, scoring="average_precision", n_jobs=-1)
     grid_search.fit(x_train, y_train)
 
     best_rf = grid_search.best_estimator_
@@ -93,7 +93,7 @@ def train_dt(x_train: pd.DataFrame, y_train: np.ndarray) -> DecisionTreeClassifi
     }
 
     dt_model = DecisionTreeClassifier(random_state=42)
-    grid_search = GridSearchCV(dt_model, param_grid, cv=5, scoring="average_precision")
+    grid_search = GridSearchCV(dt_model, param_grid, cv=5, scoring="average_precision", n_jobs=-1)
     grid_search.fit(x_train, y_train)
 
     best_dt = grid_search.best_estimator_
