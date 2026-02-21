@@ -62,25 +62,35 @@ def preprocess_and_split(  # noqa: PLR0913
     if target_col not in df.columns:
         raise ValueError(f"Target column '{target_col}' not found in dataset.")  # noqa: EM102, TRY003
 
+    # Reset index and add row_id for traceability
+    df = df.reset_index(drop=True).copy()
+    df["row_id"] = df.index
+
     x = df.drop(columns=[target_col])
     y = df[target_col].astype(int)
 
+    row_id = x.pop("row_id")
+
     # 1. Initial train/test split
-    x_train_full, x_test, y_train_full, y_test = train_test_split(
-        x, y, test_size=test_size, random_state=seed, stratify=y,
+    x_train_full, x_test, y_train_full, y_test, id_train_full, id_test = train_test_split(
+        x, y, row_id,
+        test_size=test_size,
+        random_state=seed,
+        stratify=y,
     )
 
     if make_val:
-        x_train, x_val, y_train, y_val = train_test_split(
+        x_train, x_val, y_train, y_val, id_train, id_val = train_test_split(
             x_train_full,
             y_train_full,
+            id_train_full,
             test_size=val_size,
             random_state=seed,
             stratify=y_train_full,
         )
     else:
-        x_train, y_train = x_train_full, y_train_full
-        x_val, y_val = None, None
+        x_train, y_train, id_train = x_train_full, y_train_full, id_train_full
+        x_val, y_val, id_val = None, None, None
 
     # 2. Handle zeros in medical columns (0s --> NaNs)
     x_train = _replace_zeros_with_nan(x_train, MEDICAL_COLS)
@@ -135,6 +145,9 @@ def preprocess_and_split(  # noqa: PLR0913
         "scaler": scaler,
         "seed": seed,
         "target_col": target_col,
+        "row_id_train": id_train.reset_index(drop=True),
+        "row_id_val": id_val.reset_index(drop=True) if id_val is not None else None,
+        "row_id_test": id_test.reset_index(drop=True),
     }
 
     return {
@@ -144,6 +157,9 @@ def preprocess_and_split(  # noqa: PLR0913
         "y_val": y_val.reset_index(drop=True) if y_val is not None else None,
         "x_test": x_test_scaled,
         "y_test": y_test.reset_index(drop=True),
+        "row_id_train": id_train.reset_index(drop=True),
+        "row_id_val": id_val.reset_index(drop=True) if id_val is not None else None,
+        "row_id_test": id_test.reset_index(drop=True),
         "artifacts": artifacts,
     }
 
