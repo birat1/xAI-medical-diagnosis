@@ -6,89 +6,71 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+SYMBOLIC_DATA_DIR = Path("../data/symbolic")
 RULES_DIR = Path("../results/pygol")
-METADATA_FILE = Path("meta_data.info")
 
-def parse_meta_data() -> dict:
-    """Parse meta data from meta_data.info file."""
-    metadata = {}
-    curr_feature = None
+st.set_page_config(layout="wide")
 
-    with (METADATA_FILE).open("r") as f:
-        for line in f:
-            line = line.strip()
-            if "Feature Name :" in line:
-                curr_feature = line.split(":")[1].split("(")[0].strip().lower()
-                metadata[curr_feature] = {}
-            elif curr_feature and re.match(r"^g\d", line):
-                parts = line.split("\t")
-                bin_id = parts[0].strip()
-                val_range = parts[1].strip()
-                metadata[curr_feature][bin_id] = val_range
+def get_counterfactual_suggestions(patient_idx: int, rules_json: dict) -> None:
+    """Retrieve and display counterfactual rules for a given patient index."""
+    results = rules_json.get("analysis_results", {}).get(patient_idx, [])
 
-    return metadata
+    # If no rules are found, display a warning message
+    if not results:
+        st.warning("No counterfactual suggestions found for this patient.")
+        return
 
-@st.cache_data
-def load_resources() -> tuple[dict, dict]:
-    """Load meta data and PyGol rules from files."""
-    metadata = parse_meta_data()
+    for rule in results:
+        # Remove the "target(A):-"
+        rule_content = rule.replace("target(A):-", "")
 
-    with (RULES_DIR / "pygol_diabetes_rules.json").open("r") as f:
-        rules = json.load(f)
+        # Use regex to extract feature names and their ranges
+        pattern = r"(\w+)\(A,\w+\),inRange\(\w+,([\d\.]+--[\d\.]+)\)"
+        matches = re.findall(pattern, rule_content)
 
-    return metadata, rules
+        if matches:
+            # Store suggestions in a list to display later
+            suggestions = []
 
-def get_rules(patient_data, hypothesis):
-    boundary_conditions = []
-    for rule in hypothesis:
-        # e.g. rule: "target(A):-age(A,g4),bmi(A,g0),insulin(A,g1)"  # noqa: ERA001
+            # Format range (e.g. "0.5--1.0" -> "0.5 - 1.0")
+            for feature, r_range in matches:
+                clean_range = r_range.replace("--", " - ")
+                suggestions.append(f"{feature} must be between: **({clean_range})**")
 
-        # Extract conditions from the rule body
-        # "age(A,g4),bmi(A,g0),insulin(A,g1)"  # noqa: ERA001
-        body = rule.split(":-")[1]
-        conditions = re.findall(r"(\w+)\(A,(g\d)\)", body)
+            # Display the suggestions in info box
+            suggestion_text = "  \n".join(suggestions)
+            st.info(suggestion_text)
 
-        match = True
-        for feature, bin_id in conditions:
-            if str(patient_data.get(feature)) != bin_id:
-                match = False
-                break
-
-        if match:
-            boundary_conditions.append(body)
-    return boundary_conditions
+        st.markdown("---")
 
 # -----------------------------------------------------------------------------
 
+symbolic_data = pd.read_csv(SYMBOLIC_DATA_DIR / "symbolic_diabetes.csv")
+with Path(RULES_DIR / "pygol_diabetes_rules.json").open("r") as f:
+    rules_data = json.load(f)
 
-st.set_page_config(page_title="Medical xAI", layout="wide")
-st.title("Medical Diagnosis with PyGol Explainability")
+# e.g. target(e_115)
+patient_idx = list(rules_data["analysis_results"].keys())
+# e.g. target(e_115) -> Patient 115
+display_labels = {k: f"Patient {k.split('(e_')[1].split(')')[0]}" for k in patient_idx}
 
-metadata, rules = load_resources()
+st.title("PyGol Explainability Analysis")
+col1, col2 = st.columns([1, 2])
 
-uploaded_file = st.file_uploader("Upload Symbolic Test Data (CSV)", type="csv")
+with col1:
+    selected_patient = st.selectbox(
+        "Select a patient to analyse:",
+        options=patient_idx,
+        format_func=lambda x: display_labels[x],
+    )
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    col1, col2 = st.columns([1, 2])
+    selected_idx = int(selected_patient.split("(e_")[1].split(")")[0])
+    patient_row = symbolic_data.iloc[selected_idx].to_dict()
 
-    with col1:
-        patient_idx = st.selectbox("Select Patient Index", options=df.index)
-        patient_data = df.loc[patient_idx].to_dict()
-        st.write("**Patient Summary:**")
-        st.json(patient_data)
+    st.write("**Patient Summary:**")
+    st.json(patient_row)
 
-    with col2:
-        active_rules = get_rules(patient_data, rules["hypothesis"])
-
-        if active_rules:
-            st.error("**Positive Diagnosis Predicted**")
-
-            for i, conditions in enumerate(active_rules):
-                with st.expander(f"Rule {i+1} satisfied:"):
-                    for feature, bin_id in conditions:
-                        range_str = metadata.get(feature, {}).get(bin_id, "Unknown range")
-                        st.write(f"- **{feature.capitalize()}**: `{range_str}`")
-        else:
-            st.success("**Negative Diagnosis Predicted**")
-            st.write("No rules were satisfied for this patient.")
+with col2:
+    st.subheader("Counterfactual Suggestions:")
+    st.caption("(changes needed to flip prediction from non-diabetic to diabetic)")
+    get_counterfactual_suggestions(selected_patient, rules_data)
