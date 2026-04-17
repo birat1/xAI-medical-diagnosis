@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 ARTIFACTS_DIR = Path("../data/processed")
 DICE_DIR = Path("../results/dice")
-OUTPUT_DIR = Path("../results/interpretations")
+OUTPUT_DIR = Path("../results/dice_interpretations")
 RAW_DATA_DIR = Path("../data/raw")
 
 def load_artifacts() -> dict:

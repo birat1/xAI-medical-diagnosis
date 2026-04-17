@@ -227,10 +227,12 @@ if __name__ == "__main__":
     try:
         # Load
         data = load_data(args.input)
-        output_dir = args.output if args.output.endswith("/") else args.output + "/"
+
+        output_dir = Path(args.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         # Analyse
-        perform_correlation_analysis(data, output_path=output_dir + "correlation_heatmap.png")
+        perform_correlation_analysis(data, output_path=output_dir / "correlation_heatmap.png")
 
         # Preprocess
         bundle = preprocess_and_split(

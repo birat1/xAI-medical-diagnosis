@@ -7,6 +7,7 @@ import json
 import logging
 import pickle
 import re
+import time
 import warnings
 from pathlib import Path
 
@@ -152,10 +153,13 @@ def run_dice(  # noqa: PLR0913
     dice_exp = None
     used_method = None
     last_err: Exception | None = None
+    elapsed_time = None
 
     for method, cf_params in methods:
         try:
             exp = dice_ml.Dice(d, m, method=method)
+
+            start = time.perf_counter()
             dice_exp = exp.generate_counterfactuals(
                 query_instance,
                 total_CFs=5,
@@ -164,6 +168,8 @@ def run_dice(  # noqa: PLR0913
                 features_to_vary=actionable_features,
                 **cf_params,
             )
+            elapsed_time = time.perf_counter() - start
+
             used_method = method
             break
         except UserConfigValidationException as e:
@@ -200,6 +206,7 @@ def run_dice(  # noqa: PLR0913
         "dice_method_used": used_method,
         "actionable_features": actionable_features,
         "permitted_range_quantiles": [0.05, 0.95],
+        "generation_time_seconds": elapsed_time,
     }
 
     with (output_dir / "dice_counterfactuals.json").open("w") as f:
@@ -224,6 +231,7 @@ def save_results(hypothesis: list[str], analysis_results: dict, filename: str = 
         "analysis_results": dict(sorted(analysis_results.items(), key=lambda item: _natural_sort_key(item[0]))),
     }
 
+    RULES_DIR.mkdir(parents=True, exist_ok=True)
     with (RULES_DIR / filename).open("w") as f:
         json.dump(data_to_save, f, indent=2)
 
@@ -343,7 +351,8 @@ if __name__ == "__main__":
     # Load resources
     rf_model, dt_model, mlp_model, x_train, y_train, x_test, y_test, feature_names = load_resources()
 
-    # 1. Generate DiCE counterfactuals for both models
+
+    # 1. Generate DiCE counterfactuals for all models
     for i in range(5):
         run_dice(rf_model, x_train, y_train, x_test, feature_names, model_name="Random Forest", patient_idx=i)
         run_dice(dt_model, x_train, y_train, x_test, feature_names, model_name="Decision Tree", patient_idx=i)

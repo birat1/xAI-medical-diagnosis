@@ -81,6 +81,8 @@ if __name__ == "__main__":
         "mlp_best_f1": mlp_best_f1,
         "tuned_on": "validation",
     }
+
+    METRICS_DIR.mkdir(parents=True, exist_ok=True)
     with (METRICS_DIR / "thresholds.json").open("w") as f:
         json.dump(thresholds, f, indent=4)
     logger.info(f"\nOptimal thresholds saved to {METRICS_DIR / 'thresholds.json'}")

@@ -141,6 +141,9 @@ if __name__ == "__main__":
 
     test_indices = [0, 1, 2, 3, 4]
 
+    SHAP_DIR.mkdir(parents=True, exist_ok=True)
+    LIME_DIR.mkdir(parents=True, exist_ok=True)
+
     # 1. Interpret Random Forest
     run_shap(rf, x_test, features, name="Random Forest")
     run_lime(rf, x_train, x_test, features, test_indices, name="Random Forest")
