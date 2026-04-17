@@ -6,6 +6,7 @@ Generates counterfactual scenarios and symbolic logical rules for RF and MLP mod
 import json
 import logging
 import pickle
+import re
 import warnings
 from pathlib import Path
 
@@ -13,7 +14,12 @@ import dice_ml
 import pandas as pd
 import torch
 from pandas.errors import PerformanceWarning
+from raiutils.exceptions import UserConfigValidationException
+from torch import nn
+
+from models import MLP, set_seed
 from PyGol import (
+    analysis_theory_examples,
     bottom_clause_generation,
     evaluate_theory_prolog,
     prepare_examples,
@@ -23,10 +29,6 @@ from PyGol import (
     pygol_train_test_split,
     read_constants_meta_info,
 )
-from raiutils.exceptions import UserConfigValidationException
-from torch import nn
-
-from models import MLP, set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -38,6 +40,10 @@ DICE_DIR = Path("../results/dice")
 RULES_DIR = Path("../results/pygol")
 
 warnings.filterwarnings("ignore", category=PerformanceWarning)
+
+def _natural_sort_key(s: str) -> list:
+    """Helper function for natural sorting of strings with numbers."""
+    return [int(text) if text.isdigit() else text.lower() for text in re.split("([0-9]+)", s)]
 
 def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str]]:
     """Load trained models, data (processed), and artifacts."""
@@ -217,11 +223,12 @@ def run_dice(  # noqa: PLR0913
 # -----------------------------------------------------------------------------
 # PyGol
 # -----------------------------------------------------------------------------
-def save_hypothesis(hypothesis: list[str], filename: str = "pygol_diabetes_rules.json") -> None:
+def save_results(hypothesis: list[str], analysis_results: dict, filename: str = "pygol_diabetes_rules.json") -> None:
     """Save PyGol hypothesis (rules) to a JSON file."""
     # Structure the data with metadata
     data_to_save = {
         "hypothesis": hypothesis,
+        "analysis_results": dict(sorted(analysis_results.items(), key=lambda item: _natural_sort_key(item[0]))),
     }
 
     with (RULES_DIR / filename).open("w") as f:
@@ -239,41 +246,73 @@ def run_pygol(
     """Extract symbolic logical rules using PyGol on symbolic (unscaled, no-SMOTE) data."""
     logger.info("Generating PyGol symbolic logical rules...")
 
+    output_dir = Path("pygol_outputs")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     # 1. Prepare data for PyGol
     data = pd.concat(
         [x_train_symbolic.reset_index(drop=True), y_train_symbolic.rename(target_name).reset_index(drop=True)],
         axis=1,
     )
 
-    # 2. Generate background knowledge
-    background = prepare_logic_rules(
-        data,
-        feature_names,
-        meta_information="meta_data.info",
-        default_div=5,
-        conditions={},
-    )
+    feature_names = ["pregnancies","glucose","bloodpressure","skinthickness","insulin","bmi","diabetespedigreefunction","age"]
+
+    bk_file = output_dir / "BK.pl"
+    pos_example_file = output_dir / "pos_example.f"
+    neg_example_file = output_dir / "neg_example.n"
+    pos_bc_dict = output_dir / "positive_bottom_clause"
+    neg_bc_dict = output_dir / "negative_bottom_clause"
+
+    # 2. Generate background knowledge (if not present)
+    if not bk_file.exists():
+        logger.info("Generating background knowledge for PyGol...")
+        prepare_logic_rules(
+            data,
+            feature_names,
+            meta_information=str(output_dir / "meta_data.info"),
+            default_div=5,
+            conditions={},
+            file_name=str(bk_file),
+        )
+    else:
+        logger.info(f"Using existing background knowledge file: {bk_file}")
 
     # 3. Generate example files (pos_example.f and neg_example.n)
-    examples = prepare_examples(data, target_name)
+    if not pos_example_file.exists() or not neg_example_file.exists():
+        logger.info("Generating example files for PyGol...")
+        examples = prepare_examples(
+            data,
+            target_name,
+            positive_example=str(pos_example_file),
+            negative_example=str(neg_example_file),
+            meta_information=str(output_dir / "meta_data.info"),
+        )
+    else:
+        logger.info(f"Using existing example files: {pos_example_file}, {neg_example_file}")
 
     # 4. Generate constant list from meta information
-    const = read_constants_meta_info()
+    const = read_constants_meta_info(meta_information=str(output_dir / "meta_data.info"))
 
     # 5. Generate bottom clauses
-    P, N = bottom_clause_generation(
-        file="BK.pl",
-        constant_set=const,
-        container="dict",
-        positive_example="pos_example.f",
-        negative_example="neg_example.n",
-    )
+    if not pos_bc_dict.exists() or not neg_bc_dict.exists():
+        logger.info("Generating bottom clauses for PyGol...")
+        P, N = bottom_clause_generation(
+            file=str(bk_file),
+            constant_set=const,
+            container="dict",
+            positive_example=str(pos_example_file),
+            negative_example=str(neg_example_file),
+            positive_file_dictionary = str(pos_bc_dict),
+            negative_file_dictionary = str(neg_bc_dict),
+        )
+    else:
+        logger.info(f"Using existing bottom clause files: {pos_bc_dict}, {neg_bc_dict}")
 
     # 6. Split into train/test sets for PyGol
     Train_P, Test_P, Train_N, Test_N = pygol_train_test_split(
         test_size=0.25,
-        positive_file_dictionary=P,
-        negative_file_dictionary=N,
+        positive_file_dictionary=str(pos_bc_dict),
+        negative_file_dictionary=str(neg_bc_dict),
     )
 
     # 7. Perform Learning
@@ -284,16 +323,31 @@ def run_pygol(
         key_size=1,
         min_pos=2,
         max_neg=0,
+        file=str(bk_file),
     )
 
-    # print_rules(model.hypothesis, meta_information = "meta_data.info")
+    # Display the generated rules with the range of feature values they cover
+    rule_set = print_rules(model.hypothesis, meta_information = str(output_dir / "meta_data.info"))
+    logger.info("\nGenerated PyGol Rules (with value ranges):")
+    logger.info(rule_set)
 
+    logger.info("\nRule Table")
+    analysis_examples = analysis_theory_examples(model.hypothesis, str(bk_file), Train_P, verbose=True)
+    # logger.info(analysis_examples["target(e_596)."])
+
+    # Store the analysis for every example in a dictionary for later saving
+    analysis_results = {}
+    for target, example in analysis_examples.items():
+        analysis_rule = print_rules(example, meta_information = str(output_dir / "meta_data.info"))
+        analysis_results[target] = analysis_rule
+
+    # Save the generated hypothesis and analysis results to a JSON file
     if model.hypothesis:
-        save_hypothesis(model.hypothesis)
+        save_results(model.hypothesis, analysis_results)
     else:
-        logger.warning("No hypothesis (rules) generated by PyGol.")
+        logger.warning("No hypothesis generated by PyGol.")
 
-    return evaluate_theory_prolog(model.hypothesis, "BK.pl", Test_P, Test_N)
+    return evaluate_theory_prolog(model.hypothesis, str(bk_file), Test_P, Test_N)
 
 
 if __name__ == "__main__":
@@ -303,7 +357,7 @@ if __name__ == "__main__":
     rf_model, dt_model, mlp_model, x_train, y_train, x_test, y_test, feature_names = load_resources()
 
     # 1. Generate DiCE counterfactuals for both models
-    for i in range(3):
+    for i in range(5):
         run_dice(rf_model, x_train, y_train, x_test, feature_names, model_name="Random Forest", patient_idx=i)
         run_dice(dt_model, x_train, y_train, x_test, feature_names, model_name="Decision Tree", patient_idx=i)
         run_dice(mlp_model, x_train, y_train, x_test, feature_names, model_name="Multi-Layer Perceptron", patient_idx=i)
