@@ -1,0 +1,40 @@
+DiCE Counterfactual Interpretation Summary
+---------------------------------------------------------------------------
+Model: random_forest
+Patient Folder: patient_003
+Patient Index (Test Set): 3
+Row (diabetes.csv): 795
+
+RAW Patient Data (Clinical Units - may include 0=missing):
+     Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin   BMI  DiabetesPedigreeFunction   Age
+raw         13.0    152.0           90.0           33.0     29.0  26.8                     0.731  43.0
+
+IMPUTED Patient Data (Clinical Units):
+     Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin   BMI  DiabetesPedigreeFunction   Age  Outcome
+imp         13.0    152.0           90.0           33.0     29.0  26.8                     0.731  43.0      1.0
+
+Counterfactuals (Clinical Units):
+      Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin     BMI  DiabetesPedigreeFunction   Age  Outcome
+cf_1         13.0   83.390           90.0           33.0     29.0  41.064                     0.731  43.0      0.0
+cf_2         13.0  103.964           90.0           33.0     29.0  26.800                     0.731  43.0      0.0
+cf_3         13.0  101.863           90.0           33.0     29.0  26.800                     0.731  43.0      0.0
+cf_4         13.0  120.435           90.0           33.0     29.0  22.223                     0.731  43.0      0.0
+cf_5         13.0  116.351           90.0           33.0     29.0  26.800                     0.731  43.0      0.0
+
+Required Changes (Δ = CF - IMP):
+      Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin     BMI  DiabetesPedigreeFunction  Age
+cf_1          0.0  -68.610           -0.0            0.0     -0.0  14.264                       0.0  0.0
+cf_2          0.0  -48.036           -0.0            0.0     -0.0   0.000                       0.0  0.0
+cf_3          0.0  -50.137           -0.0            0.0     -0.0   0.000                       0.0  0.0
+cf_4          0.0  -31.565           -0.0            0.0     -0.0  -4.577                       0.0  0.0
+cf_5          0.0  -35.649           -0.0            0.0     -0.0   0.000                       0.0  0.0
+
+Feature Change Frequency Across Counterfactuals:
+Glucose                     5
+Insulin                     5
+BMI                         2
+Pregnancies                 0
+BloodPressure               0
+SkinThickness               0
+DiabetesPedigreeFunction    0
+Age                         0
