@@ -117,8 +117,9 @@ def preprocess_and_split(  # noqa: PLR0913
     x_full_symbolic = pd.DataFrame(np.vstack(x_imputed_symbolic), columns=x.columns)
     y_full_symbolic = pd.concat(y_imputed_symbolic).reset_index(drop=True)
 
-    x_full_symbolic.to_csv(SYMBOLIC_DIR / "x_full_symbolic.csv", index=False)
-    y_full_symbolic.to_csv(SYMBOLIC_DIR / "y_full_symbolic.csv", index=False)
+    symbolic_combined = pd.concat([x_full_symbolic, y_full_symbolic], axis=1)
+
+    symbolic_combined.to_csv(SYMBOLIC_DIR / "symbolic_diabetes.csv", index=False)
 
     logger.info(f"Imputed symbolic data saved to {SYMBOLIC_DIR}")
 

@@ -74,13 +74,6 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFr
     return rf_model, dt_model, mlp_model, x_train, y_train, x_test, y_test, feature_names
 
 
-def load_symbolic_data() -> tuple[pd.DataFrame, pd.Series]:
-    """Load data prepared for symbolic rule extraction."""
-    x_full_symbolic = pd.read_csv(SYMBOLIC_DATA_DIR / "x_full_symbolic.csv")
-    y_full_symbolic = pd.read_csv(SYMBOLIC_DATA_DIR / "y_full_symbolic.csv")["outcome"].astype(int)
-    return x_full_symbolic, y_full_symbolic
-
-
 # -----------------------------------------------------------------------------
 # DiCE
 # -----------------------------------------------------------------------------
@@ -238,8 +231,7 @@ def save_results(hypothesis: list[str], analysis_results: dict, filename: str = 
 
 
 def run_pygol(
-        x_full_symbolic: pd.DataFrame,
-        y_full_symbolic: pd.Series,
+        symbolic_data: pd.DataFrame,
         feature_names: list[str],
         target_name: str = "outcome",
     ) -> list[str]:
@@ -250,10 +242,7 @@ def run_pygol(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Prepare data for PyGol
-    data = pd.concat(
-        [x_full_symbolic.reset_index(drop=True), y_full_symbolic.rename(target_name).reset_index(drop=True)],
-        axis=1,
-    )
+    data = symbolic_data.reset_index(drop=True)
 
     bk_file = output_dir / "BK.pl"
     pos_example_file = output_dir / "pos_example.f"
@@ -361,9 +350,9 @@ if __name__ == "__main__":
         run_dice(mlp_model, x_train, y_train, x_test, feature_names, model_name="Multi-Layer Perceptron", patient_idx=i)
 
     # Load symbolic data
-    x_full_symbolic, y_full_symbolic = load_symbolic_data()
+    symbolic_data = pd.read_csv(SYMBOLIC_DATA_DIR / "symbolic_diabetes.csv")
 
     # 2. Generate PyGol symbolic logical rules
-    rules = run_pygol(x_full_symbolic, y_full_symbolic, feature_names)
+    rules = run_pygol(symbolic_data, feature_names, target_name="outcome")
 
     logger.info("Explainability tasks completed.")
