@@ -52,7 +52,7 @@ def _replace_zeros_with_nan(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
 
 def preprocess_and_split(  # noqa: PLR0913
         df: pd.DataFrame,
-        target_col: str = "Outcome",
+        target_col: str = "outcome",
         test_size: float = 0.2,
         val_size: float = 0.2,
         make_val: bool = True,  # noqa: FBT001, FBT002
@@ -108,17 +108,17 @@ def preprocess_and_split(  # noqa: PLR0913
     # Save a copy of imputed data for PyGol
     SYMBOLIC_DIR.mkdir(parents=True, exist_ok=True)
 
-    x_train_symbolic = pd.DataFrame(x_train_imputed, columns=x.columns)
-    x_test_symbolic = pd.DataFrame(x_test_imputed, columns=x.columns)
-    x_train_symbolic.to_csv(SYMBOLIC_DIR / "x_train_symbolic.csv", index=False)
-    x_test_symbolic.to_csv(SYMBOLIC_DIR / "x_test_symbolic.csv", index=False)
-
-    y_train.reset_index(drop=True).to_csv(SYMBOLIC_DIR / "y_train_symbolic.csv", index=False)
-    y_test.reset_index(drop=True).to_csv(SYMBOLIC_DIR / "y_test_symbolic.csv", index=False)
+    x_imputed_symbolic = [x_train_imputed, x_test_imputed]
+    y_imputed_symbolic = [y_train, y_test]
     if make_val and x_val is not None:
-        x_val_symbolic = pd.DataFrame(x_val_imputed, columns=x.columns)
-        x_val_symbolic.to_csv(SYMBOLIC_DIR / "x_val_symbolic.csv", index=False)
-        y_val.reset_index(drop=True).to_csv(SYMBOLIC_DIR / "y_val_symbolic.csv", index=False)
+        x_imputed_symbolic.append(x_val_imputed)
+        y_imputed_symbolic.append(y_val)
+
+    x_full_symbolic = pd.DataFrame(np.vstack(x_imputed_symbolic), columns=x.columns)
+    y_full_symbolic = pd.concat(y_imputed_symbolic).reset_index(drop=True)
+
+    x_full_symbolic.to_csv(SYMBOLIC_DIR / "x_full_symbolic.csv", index=False)
+    y_full_symbolic.to_csv(SYMBOLIC_DIR / "y_full_symbolic.csv", index=False)
 
     logger.info(f"Imputed symbolic data saved to {SYMBOLIC_DIR}")
 
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--target",
         type=str,
-        default="Outcome",
+        default="outcome",
         help="Target column name.",
     )
     parser.add_argument(

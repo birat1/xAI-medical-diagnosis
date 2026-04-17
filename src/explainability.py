@@ -14,10 +14,6 @@ import dice_ml
 import pandas as pd
 import torch
 from pandas.errors import PerformanceWarning
-from raiutils.exceptions import UserConfigValidationException
-from torch import nn
-
-from models import MLP, set_seed
 from PyGol import (
     analysis_theory_examples,
     bottom_clause_generation,
@@ -29,6 +25,10 @@ from PyGol import (
     pygol_train_test_split,
     read_constants_meta_info,
 )
+from raiutils.exceptions import UserConfigValidationException
+from torch import nn
+
+from models import MLP, set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -76,9 +76,9 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFr
 
 def load_symbolic_data() -> tuple[pd.DataFrame, pd.Series]:
     """Load data prepared for symbolic rule extraction."""
-    x_train_symbolic = pd.read_csv(SYMBOLIC_DATA_DIR / "x_train_symbolic.csv")
-    y_train_symbolic = pd.read_csv(SYMBOLIC_DATA_DIR / "y_train_symbolic.csv")["Outcome"].astype(int)
-    return x_train_symbolic, y_train_symbolic
+    x_full_symbolic = pd.read_csv(SYMBOLIC_DATA_DIR / "x_full_symbolic.csv")
+    y_full_symbolic = pd.read_csv(SYMBOLIC_DATA_DIR / "y_full_symbolic.csv")["outcome"].astype(int)
+    return x_full_symbolic, y_full_symbolic
 
 
 # -----------------------------------------------------------------------------
@@ -112,15 +112,15 @@ def run_dice(  # noqa: PLR0913
 
     # Define continuous variables (Age/Pregnancies are discrete)
     continuous_vars = feature_names.copy()
-    continuous_vars.remove("Pregnancies")
-    continuous_vars.remove("Age")
+    continuous_vars.remove("pregnancies")
+    continuous_vars.remove("age")
 
     # Combine x_train and y_train for DiCE
     train_dataset = pd.concat([x_train, y_train], axis=1)
-    d = dice_ml.Data(dataframe=train_dataset, continuous_features=continuous_vars, outcome_name="Outcome")
+    d = dice_ml.Data(dataframe=train_dataset, continuous_features=continuous_vars, outcome_name="outcome")
 
     # Define permitted ranges for changeable features
-    actionable_features = ["Glucose", "BMI", "BloodPressure", "Insulin"]
+    actionable_features = ["glucose", "bmi", "bloodpressure", "insulin"]
     permitted_range = make_permitted_range(x_train, actionable_features, 0.05, 0.95)
     # logger.info(f"Permitted ranges for DiCE: {permitted_range}")
 
@@ -238,10 +238,10 @@ def save_results(hypothesis: list[str], analysis_results: dict, filename: str = 
 
 
 def run_pygol(
-        x_train_symbolic: pd.DataFrame,
-        y_train_symbolic: pd.Series,
+        x_full_symbolic: pd.DataFrame,
+        y_full_symbolic: pd.Series,
         feature_names: list[str],
-        target_name: str = "Outcome",
+        target_name: str = "outcome",
     ) -> list[str]:
     """Extract symbolic logical rules using PyGol on symbolic (unscaled, no-SMOTE) data."""
     logger.info("Generating PyGol symbolic logical rules...")
@@ -251,11 +251,9 @@ def run_pygol(
 
     # 1. Prepare data for PyGol
     data = pd.concat(
-        [x_train_symbolic.reset_index(drop=True), y_train_symbolic.rename(target_name).reset_index(drop=True)],
+        [x_full_symbolic.reset_index(drop=True), y_full_symbolic.rename(target_name).reset_index(drop=True)],
         axis=1,
     )
-
-    feature_names = ["pregnancies","glucose","bloodpressure","skinthickness","insulin","bmi","diabetespedigreefunction","age"]
 
     bk_file = output_dir / "BK.pl"
     pos_example_file = output_dir / "pos_example.f"
@@ -363,9 +361,9 @@ if __name__ == "__main__":
         run_dice(mlp_model, x_train, y_train, x_test, feature_names, model_name="Multi-Layer Perceptron", patient_idx=i)
 
     # Load symbolic data
-    x_train_symbolic, y_train_symbolic = load_symbolic_data()
+    x_full_symbolic, y_full_symbolic = load_symbolic_data()
 
     # 2. Generate PyGol symbolic logical rules
-    rules = run_pygol(x_train_symbolic, y_train_symbolic, feature_names)
+    rules = run_pygol(x_full_symbolic, y_full_symbolic, feature_names)
 
     logger.info("Explainability tasks completed.")
