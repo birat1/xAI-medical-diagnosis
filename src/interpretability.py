@@ -55,11 +55,12 @@ def run_shap(model: object, x_test: pd.DataFrame, feature_names: list[str], name
 
     np.random.default_rng(42)
 
+    # Sample 300 random test samples for SHAP
+    plot_data = x_test.sample(n=300, random_state=42)
+
     # SHAP for MLP
     if isinstance(model, torch.nn.Module):
-        # Limit to first 100 samples for SHAP
-        plot_data = x_test.iloc[:100]
-        background = torch.tensor(x_test.to_numpy()[:100], dtype=torch.float32)
+        background = torch.tensor(plot_data.to_numpy(), dtype=torch.float32)
         explainer = shap.DeepExplainer(model, background)
 
         test_tensor = torch.tensor(plot_data.to_numpy(), dtype=torch.float32)
@@ -68,8 +69,6 @@ def run_shap(model: object, x_test: pd.DataFrame, feature_names: list[str], name
         shap_values_to_plot = shap_values[:, :, 0] if len(shap_values.shape) == 3 else shap_values
     # SHAP for Random Forest
     else:
-        # Limit to first 100 samples for SHAP
-        plot_data = x_test.iloc[:100]
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(plot_data)
 
