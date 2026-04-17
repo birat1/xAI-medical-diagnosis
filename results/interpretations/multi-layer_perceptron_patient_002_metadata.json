@@ -6,35 +6,35 @@ Patient Index (Test Set): 2
 Row (diabetes.csv): 1244
 
 RAW Patient Data (Clinical Units - may include 0=missing):
-     Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin   BMI  DiabetesPedigreeFunction   Age
+     pregnancies  glucose  bloodpressure  skinthickness  insulin   bmi  diabetespedigreefunction   age
 raw          2.0    112.0           68.0           22.0     94.0  34.1                     0.315  26.0
 
 IMPUTED Patient Data (Clinical Units):
-     Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin   BMI  DiabetesPedigreeFunction   Age  Outcome
+     pregnancies  glucose  bloodpressure  skinthickness  insulin   bmi  diabetespedigreefunction   age  Outcome
 imp          2.0    112.0           68.0           22.0     94.0  34.1                     0.315  26.0      0.0
 
 Counterfactuals (Clinical Units):
-      Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin     BMI  DiabetesPedigreeFunction   Age  Outcome
-cf_1          2.0  113.000         81.016           22.0   86.821  33.300                     0.315  26.0      1.0
-cf_2          2.0  130.000         72.000           22.0   79.000  28.900                     0.315  26.0      1.0
-cf_3          2.0  142.035         76.972           22.0   91.893  34.079                     0.315  26.0      1.0
-cf_4          2.0  124.646         81.016           22.0   86.821  37.972                     0.315  26.0      1.0
-cf_5          2.0  129.000         64.000           22.0  115.000  26.400                     0.315  26.0      1.0
+      pregnancies  glucose  bloodpressure  skinthickness  insulin     bmi  diabetespedigreefunction   age  Outcome
+cf_1          2.0  129.000         64.000           22.0   79.000  28.400                     0.315  26.0      1.0
+cf_2          2.0  129.000         64.000           22.0  115.000  26.400                     0.315  26.0      1.0
+cf_3          2.0  163.000         70.000           22.0  105.000  31.600                     0.315  26.0      1.0
+cf_4          2.0  154.184         73.495           22.0   64.877  34.586                     0.315  26.0      1.0
+cf_5          2.0  155.000         74.000           22.0   96.000  26.600                     0.315  26.0      1.0
 
 Required Changes (Δ = CF - IMP):
-      Pregnancies  Glucose  BloodPressure  SkinThickness  Insulin    BMI  DiabetesPedigreeFunction  Age
-cf_1          0.0    1.000         13.016           -0.0   -7.179 -0.800                       0.0  0.0
-cf_2          0.0   18.000          4.000           -0.0  -15.000 -5.200                       0.0  0.0
-cf_3          0.0   30.035          8.972           -0.0   -2.107 -0.021                       0.0  0.0
-cf_4          0.0   12.646         13.016           -0.0   -7.179  3.872                       0.0  0.0
-cf_5          0.0   17.000         -4.000           -0.0   21.000 -7.700                       0.0  0.0
+      pregnancies  glucose  bloodpressure  skinthickness  insulin    bmi  diabetespedigreefunction  age
+cf_1          0.0   17.000         -4.000           -0.0  -15.000 -5.700                       0.0  0.0
+cf_2          0.0   17.000         -4.000           -0.0   21.000 -7.700                       0.0  0.0
+cf_3          0.0   51.000          2.000           -0.0   11.000 -2.500                       0.0  0.0
+cf_4          0.0   42.184          5.495           -0.0  -29.123  0.486                       0.0  0.0
+cf_5          0.0   43.000          6.000           -0.0    2.000 -7.500                       0.0  0.0
 
 Feature Change Frequency Across Counterfactuals:
-Glucose                     5
-BloodPressure               5
-Insulin                     5
-BMI                         5
-Pregnancies                 0
-SkinThickness               0
-DiabetesPedigreeFunction    0
-Age                         0
+glucose                     5
+bloodpressure               5
+insulin                     5
+bmi                         5
+pregnancies                 0
+skinthickness               0
+diabetespedigreefunction    0
+age                         0
