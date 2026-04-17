@@ -16,6 +16,7 @@ dependencies = [
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
     "shap>=0.49.1",
+    "streamlit>=1.55.0",
     "torch>=2.9.1",
     "torchvision>=0.24.1",
 ]
@@ -33,6 +34,7 @@ select = [
 ignore = [
     "G004", # Allow f-strings in logging
     "S301", # Allow pickle for trusted local data
+    "ERA001", # Allow commented out code
 ]
 
 [tool.uv.sources]
