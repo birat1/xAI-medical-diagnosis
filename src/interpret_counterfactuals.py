@@ -17,16 +17,29 @@ OUTPUT_DIR = Path("../results/dice_interpretations")
 RAW_DATA_DIR = Path("../data/raw")
 
 def load_artifacts() -> dict:
-    """Load preprocessing artifacts needed to interpret counterfactuals."""
-    artifacts_path = ARTIFACTS_DIR / "preprocess_artifacts.pkl"
+    """Load preprocessing + split artifacts needed to interpret counterfactuals."""
+    preprocessor_path = Path("../models/preprocessor.pkl")
+    split_path = ARTIFACTS_DIR / "split_artifacts.pkl"
 
-    if not artifacts_path.exists():
-        raise FileNotFoundError(f"Preprocessing artifacts not found at {artifacts_path}")  # noqa: EM102, TRY003
+    if not preprocessor_path.exists():
+        raise FileNotFoundError(f"Preprocessor not found at {preprocessor_path}")  # noqa: EM102, TRY003
 
-    with artifacts_path.open("rb") as f:
-        artifacts = pickle.load(f)
-        logger.info(f"Preprocessing artifacts loaded from {artifacts_path}\n")
-    return artifacts
+    if not split_path.exists():
+        raise FileNotFoundError(f"Split artifacts not found at {split_path}")  # noqa: EM102, TRY003
+
+    with preprocessor_path.open("rb") as f:
+        preprocessor = pickle.load(f)
+
+    with split_path.open("rb") as f:
+        split_artifacts = pickle.load(f)
+
+    logger.info("Loaded preprocessor and split artifacts\n")
+
+    return {
+        "scaler": preprocessor["scaler"],
+        "columns": preprocessor["columns"],
+        "row_id_test": split_artifacts.get("row_id_test"),
+    }
 
 def process_patient_cfs(
         json_path: Path,

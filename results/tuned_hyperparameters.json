@@ -1,0 +1,33 @@
+{
+  "dt": {
+    "best_params": {
+      "min_samples_split": 2,
+      "min_samples_leaf": 1,
+      "max_depth": 10,
+      "criterion": "entropy",
+      "ccp_alpha": 0.0005
+    },
+    "mean_auprc": 0.8606700052562525
+  },
+  "rf": {
+    "best_params": {
+      "n_estimators": 200,
+      "min_samples_split": 2,
+      "min_samples_leaf": 1,
+      "max_features": "log2",
+      "max_depth": null,
+      "class_weight": "balanced"
+    },
+    "mean_auprc": 0.9771462437966223
+  },
+  "mlp": {
+    "best_params": {
+      "lr": 0.001,
+      "weight_decay": 0.0,
+      "batch_size": 64,
+      "epochs": 300,
+      "patience": 20
+    },
+    "mean_auprc": 0.9385723201874676
+  }
+}

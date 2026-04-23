@@ -1,9 +1,5 @@
 {
-    "rf_threshold": 0.549468105293786,
-    "dt_threshold": 0.2426512968299711,
-    "mlp_threshold": 0.8138706684112549,
-    "rf_best_f1": 0.8285714285215011,
-    "dt_best_f1": 0.8014981272925079,
-    "mlp_best_f1": 0.8773584905160778,
-    "tuned_on": "validation"
+  "dt_threshold": 0.6455405060056221,
+  "rf_threshold": 0.58009051018163,
+  "mlp_threshold": 0.6748009324073792
 }

@@ -6,12 +6,14 @@ Generates counterfactual scenarios and symbolic logical rules for RF and MLP mod
 import json
 import logging
 import pickle
+import random
 import re
 import time
 import warnings
 from pathlib import Path
 
 import dice_ml
+import numpy as np
 import pandas as pd
 import torch
 from pandas.errors import PerformanceWarning
@@ -29,7 +31,7 @@ from PyGol import (
 from raiutils.exceptions import UserConfigValidationException
 from torch import nn
 
-from models import MLP, set_seed
+from models import MLP
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -42,6 +44,16 @@ RULES_DIR = Path("../results/pygol")
 
 warnings.filterwarnings("ignore", category=PerformanceWarning)
 
+def set_seed(seed: int = 42) -> None:
+    """Set random seed for reproducibility."""
+    random.seed(seed)
+    np.random.default_rng(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 def _natural_sort_key(s: str) -> list:
     """Helper function for natural sorting of strings with numbers."""
     return [int(text) if text.isdigit() else text.lower() for text in re.split("([0-9]+)", s)]
@@ -49,15 +61,21 @@ def _natural_sort_key(s: str) -> list:
 def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str]]:
     """Load trained models, data (processed), and artifacts."""
     # 1. Load Data
-    x_train = pd.read_csv(PROCESSED_DATA_DIR / "x_train.csv")
-    y_train = pd.read_csv(PROCESSED_DATA_DIR / "y_train.csv")
+    x_dev = pd.read_csv(PROCESSED_DATA_DIR / "x_dev.csv")
+    y_dev = pd.read_csv(PROCESSED_DATA_DIR / "y_dev.csv")
     x_test = pd.read_csv(PROCESSED_DATA_DIR / "x_test.csv")
     y_test = pd.read_csv(PROCESSED_DATA_DIR / "y_test.csv")
 
-    # 2. Load Artifacts
-    with Path(PROCESSED_DATA_DIR / "preprocess_artifacts.pkl").open("rb") as f:
-        artifacts = pickle.load(f)
-    feature_names = artifacts["columns"]
+    # 2. Load Preprocessor
+    with Path(MODELS_DIR / "preprocessor.pkl").open("rb") as f:
+        preprocessor = pickle.load(f)
+
+    imputer = preprocessor["imputer"]
+    scaler = preprocessor["scaler"]
+    feature_names = preprocessor["columns"]
+
+    x_dev_scaled = pd.DataFrame(scaler.transform(imputer.transform(x_dev)), columns=feature_names)
+    x_test_scaled = pd.DataFrame(scaler.transform(imputer.transform(x_test)), columns=feature_names)
 
     # 3. Load Random Forest
     with Path(MODELS_DIR / "rf_model.pkl").open("rb") as f:
@@ -72,7 +90,7 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFr
     mlp_model.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
     mlp_model.eval()
 
-    return rf_model, dt_model, mlp_model, x_train, y_train, x_test, y_test, feature_names
+    return rf_model, dt_model, mlp_model, x_dev_scaled, y_dev, x_test_scaled, y_test, feature_names
 
 
 # -----------------------------------------------------------------------------
@@ -104,17 +122,12 @@ def run_dice(  # noqa: PLR0913
     """Generate DiCE counterfactuals for given model."""
     logger.info("Generating DiCE counterfactual explanations...")
 
-    # Define continuous variables (Age/Pregnancies are discrete)
-    continuous_vars = feature_names.copy()
-    continuous_vars.remove("pregnancies")
-    continuous_vars.remove("age")
-
     # Combine x_train and y_train for DiCE
     train_dataset = pd.concat([x_train, y_train], axis=1)
-    d = dice_ml.Data(dataframe=train_dataset, continuous_features=continuous_vars, outcome_name="outcome")
+    d = dice_ml.Data(dataframe=train_dataset, continuous_features=feature_names, outcome_name="outcome")
 
     # Define permitted ranges for changeable features
-    actionable_features = ["glucose", "bmi", "bloodpressure", "insulin"]
+    actionable_features = ["glucose", "bmi", "bloodpressure", "insulin", "pregnancies", "age"]
     permitted_range = make_permitted_range(x_train, actionable_features, 0.05, 0.95)
     # logger.info(f"Permitted ranges for DiCE: {permitted_range}")
 
@@ -143,8 +156,22 @@ def run_dice(  # noqa: PLR0913
             ("random", {}),
         ]
     else:
+        class SklearnNumpyWrapper:
+            def __init__(self, base_model: object) -> None:
+                self.base_model = base_model
+
+            def predict_proba(self, x: np.ndarray) -> np.ndarray:
+                if isinstance(x, pd.DataFrame):
+                    x = x.to_numpy()
+                return self.base_model.predict_proba(x)
+
+            def predict(self, x: np.ndarray) -> np.ndarray:
+                if isinstance(x, pd.DataFrame):
+                    x = x.to_numpy()
+                return self.base_model.predict(x)
+
         # Random Forest/Decision Tree
-        m = dice_ml.Model(model=model, backend="sklearn")
+        m = dice_ml.Model(model=SklearnNumpyWrapper(model), backend="sklearn")
         methods = [
             ("random", {}),
         ]

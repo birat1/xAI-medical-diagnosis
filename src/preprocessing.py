@@ -12,12 +12,12 @@ import seaborn as sns
 from sklearn.experimental import enable_iterative_imputer  # noqa: F401
 from sklearn.impute import IterativeImputer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 SYMBOLIC_DIR = Path("../data/symbolic/")
+SYMBOLIC_DIR.mkdir(parents=True, exist_ok=True)
 MEDICAL_COLS = ["glucose", "bloodpressure", "skinthickness", "insulin", "bmi"]
 
 def load_data(file_path: str) -> pd.DataFrame:
@@ -49,15 +49,13 @@ def _replace_zeros_with_nan(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
             df[col] = df[col].replace(0, np.nan)
     return df
 
-def preprocess_and_split(  # noqa: PLR0913
+def split_train_test(
         df: pd.DataFrame,
         target_col: str = "outcome",
         test_size: float = 0.2,
-        val_size: float = 0.2,
-        make_val: bool = True,  # noqa: FBT001, FBT002
         seed: int = 42,
     ) -> dict[str, Any]:
-    """Split data into train and test sets."""
+    """Split data into development and test sets for 5-fold CV."""
     if target_col not in df.columns:
         raise ValueError(f"Target column '{target_col}' not found in dataset.")  # noqa: EM102, TRY003
 
@@ -67,121 +65,76 @@ def preprocess_and_split(  # noqa: PLR0913
 
     x = df.drop(columns=[target_col])
     y = df[target_col].astype(int)
-
     row_id = x.pop("row_id")
 
-    # 1. Initial train/test split
-    x_train_full, x_test, y_train_full, y_test, id_train_full, id_test = train_test_split(
+    # Initial development/test split
+    x_dev, x_test, y_dev, y_test, id_dev, id_test = train_test_split(
         x, y, row_id,
         test_size=test_size,
         random_state=seed,
         stratify=y,
     )
 
-    if make_val:
-        x_train, x_val, y_train, y_val, id_train, id_val = train_test_split(
-            x_train_full,
-            y_train_full,
-            id_train_full,
-            test_size=val_size,
-            random_state=seed,
-            stratify=y_train_full,
-        )
-    else:
-        x_train, y_train, id_train = x_train_full, y_train_full, id_train_full
-        x_val, y_val, id_val = None, None, None
-
-    # 2. Handle zeros in medical columns (0s --> NaNs)
-    x_train = _replace_zeros_with_nan(x_train, MEDICAL_COLS)
+    # Handle zeros in medical columns (0s --> NaNs)
+    x_dev = _replace_zeros_with_nan(x_dev, MEDICAL_COLS)
     x_test = _replace_zeros_with_nan(x_test, MEDICAL_COLS)
-    if make_val and x_val is not None:
-        x_val = _replace_zeros_with_nan(x_val, MEDICAL_COLS)
-
-    # 3. Fit median imputer on training data
-    imputer = IterativeImputer(random_state=seed)
-    x_train_imputed = imputer.fit_transform(x_train)
-    x_test_imputed = imputer.transform(x_test)
-    if make_val and x_val is not None:
-        x_val_imputed = imputer.transform(x_val)
-
-    # Save a copy of imputed data for PyGol
-    SYMBOLIC_DIR.mkdir(parents=True, exist_ok=True)
-
-    x_imputed_symbolic = [x_train_imputed, x_test_imputed]
-    y_imputed_symbolic = [y_train, y_test]
-    if make_val and x_val is not None:
-        x_imputed_symbolic.append(x_val_imputed)
-        y_imputed_symbolic.append(y_val)
-
-    x_full_symbolic = pd.DataFrame(np.vstack(x_imputed_symbolic), columns=x.columns)
-    y_full_symbolic = pd.concat(y_imputed_symbolic).reset_index(drop=True)
-
-    symbolic_combined = pd.concat([x_full_symbolic, y_full_symbolic], axis=1)
-
-    symbolic_combined.to_csv(SYMBOLIC_DIR / "symbolic_diabetes.csv", index=False)
-
-    logger.info(f"Imputed symbolic data saved to {SYMBOLIC_DIR}")
-
-    # 4. Normalisation / Scaling
-    scaler = StandardScaler()
-    x_train_scaled = pd.DataFrame(scaler.fit_transform(x_train_imputed), columns=x.columns)
-    x_test_scaled = pd.DataFrame(scaler.transform(x_test_imputed), columns=x.columns)
-    if make_val and x_val is not None:
-        x_val_scaled = pd.DataFrame(scaler.transform(x_val_imputed), columns=x.columns)
-    else:
-        x_val_scaled = None
-
-    logger.info(
-        "Completed preprocessing with IterativeImputer.\n"
-        f"Train size: {len(x_train_scaled)} | "
-        f"Val size: {len(x_val_scaled) if x_val_scaled is not None else 0} | "
-        f"Test size: {len(x_test_scaled)}"  # noqa: COM812
-    )
-
-    # 6. Save preprocessing artifacts
-    artifacts = {
-        "columns": list(x_train.columns),
-        "imputer": imputer,
-        "scaler": scaler,
-        "seed": seed,
-        "target_col": target_col,
-        "row_id_train": id_train.reset_index(drop=True),
-        "row_id_val": id_val.reset_index(drop=True) if id_val is not None else None,
-        "row_id_test": id_test.reset_index(drop=True),
-    }
 
     return {
-        "x_train": x_train_scaled,
-        "y_train": y_train.reset_index(drop=True),
-        "x_val": x_val_scaled,
-        "y_val": y_val.reset_index(drop=True) if y_val is not None else None,
-        "x_test": x_test_scaled,
+        "x_dev": x_dev.reset_index(drop=True),
+        "y_dev": y_dev.reset_index(drop=True),
+        "x_test": x_test.reset_index(drop=True),
         "y_test": y_test.reset_index(drop=True),
-        "row_id_train": id_train.reset_index(drop=True),
-        "row_id_val": id_val.reset_index(drop=True) if id_val is not None else None,
+        "row_id_dev": id_dev.reset_index(drop=True),
         "row_id_test": id_test.reset_index(drop=True),
-        "artifacts": artifacts,
+        "artifacts": {
+            "columns": list(x.columns),
+            "seed": seed,
+            "target_col": target_col,
+            "row_id_dev": id_dev.reset_index(drop=True),
+            "row_id_test": id_test.reset_index(drop=True),
+        },
     }
 
-def save_processed_data(bundle: dict[str, Any], output_dir: str) -> None:
-    """Save processed data to specified output directory."""
+def save_symbolic_data(
+        x_dev: pd.DataFrame,
+        y_dev: pd.Series,
+        x_test: pd.DataFrame,
+        y_test: pd.Series,
+        seed: int = 42,
+    ) -> None:
+    """Save symbolic data for PyGol."""
+    imputer = IterativeImputer(random_state=seed)
+
+    x_dev_imputed = imputer.fit_transform(x_dev)
+    x_test_imputed = imputer.transform(x_test)
+
+    x_dev_symbolic = pd.DataFrame(x_dev_imputed, columns=x_dev.columns)
+    x_test_symbolic = pd.DataFrame(x_test_imputed, columns=x_test.columns)
+
+    dev_symbolic = pd.concat([x_dev_symbolic, y_dev.reset_index(drop=True)], axis=1)
+    test_symbolic = pd.concat([x_test_symbolic, y_test.reset_index(drop=True)], axis=1)
+
+    full_symbolic = pd.concat([dev_symbolic, test_symbolic], axis=0).reset_index(drop=True)
+
+    full_symbolic.to_csv(SYMBOLIC_DIR / "symbolic_diabetes.csv", index=False)
+
+    logger.info(f"Symbolic data saved to {SYMBOLIC_DIR / 'symbolic_diabetes.csv'}")
+
+def save_cv_data(bundle: dict[str, Any], output_dir: str) -> None:
+    """Save development/test data to specified output directory."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    bundle["x_train"].to_csv(output_dir / "x_train.csv", index=False)
-    bundle["y_train"].to_csv(output_dir / "y_train.csv", index=False)
+    bundle["x_dev"].to_csv(output_dir / "x_dev.csv", index=False)
+    bundle["y_dev"].to_csv(output_dir / "y_dev.csv", index=False)
     bundle["x_test"].to_csv(output_dir / "x_test.csv", index=False)
     bundle["y_test"].to_csv(output_dir / "y_test.csv", index=False)
 
-    if bundle["x_val"] is not None and bundle["y_val"] is not None:
-        bundle["x_val"].to_csv(output_dir / "x_val.csv", index=False)
-        bundle["y_val"].to_csv(output_dir / "y_val.csv", index=False)
-
-    with (output_dir / "preprocess_artifacts.pkl").open("wb") as f:
+    with (output_dir / "split_artifacts.pkl").open("wb") as f:
         pickle.dump(bundle["artifacts"], f)
 
-    logger.info(f"Processed data saved to {output_dir}")
-    logger.info(f"Preprocessing artifacts saved to {output_dir / 'preprocess_artifacts.pkl'}")
+    logger.info(f"Development/test data saved to {output_dir}")
+    logger.info(f"Split artifacts saved to {output_dir / 'split_artifacts.pkl'}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Data Preprocessing Module")
@@ -210,17 +163,6 @@ if __name__ == "__main__":
         default=0.2,
         help="Test set fraction.",
     )
-    parser.add_argument(
-        "--val_size",
-        type=float,
-        default=0.2,
-        help="Validation set fraction from training data.",
-    )
-    parser.add_argument(
-        "--no_val",
-        action="store_true",
-        help="If set, no validation set will be created.",
-    )
     args = parser.parse_args()
 
     try:
@@ -233,17 +175,23 @@ if __name__ == "__main__":
         # Analyse
         perform_correlation_analysis(data, output_path=output_dir / "correlation_heatmap.png")
 
-        # Preprocess
-        bundle = preprocess_and_split(
+        # Split into train/test sets
+        bundle = split_train_test(
             data,
             target_col=args.target,
             test_size=args.test_size,
-            val_size=args.val_size,
-            make_val=not args.no_val,
             seed=42,
         )
 
-        # Save
-        save_processed_data(bundle, output_dir)
+        save_symbolic_data(
+            bundle["x_dev"],
+            bundle["y_dev"],
+            bundle["x_test"],
+            bundle["y_test"],
+            seed=42,
+        )
+
+        # Save train/test data for CV pipeline
+        save_cv_data(bundle, output_dir)
     except Exception as e:
         logger.exception(f"An error occurred during preprocessing: {e}")

@@ -2,6 +2,7 @@
 
 import logging
 import pickle
+import random
 from pathlib import Path
 
 import lime
@@ -11,7 +12,7 @@ import shap
 import torch
 from matplotlib import pyplot as plt
 
-from models import MLP, set_seed
+from models import MLP
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -21,17 +22,32 @@ DATA_DIR = Path("../data/processed")
 SHAP_DIR = Path("../results/shap")
 LIME_DIR = Path("../results/lime")
 
+def set_seed(seed: int = 42) -> None:
+    """Set random seed for reproducibility."""
+    random.seed(seed)
+    np.random.default_rng(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, list[str]]:
     """Load trained models, data, and artifacts."""
     # 1. Load Data
-    x_train = pd.read_csv(DATA_DIR / "x_train.csv")
+    x_dev = pd.read_csv(DATA_DIR / "x_dev.csv")
     x_test = pd.read_csv(DATA_DIR / "x_test.csv")
 
-    # 2. Load Artifacts
-    with Path(DATA_DIR / "preprocess_artifacts.pkl").open("rb") as f:
-        artifacts = pickle.load(f)
-    feature_names = artifacts["columns"]
+    # 2. Load Preprocessor
+    with Path(MODELS_DIR / "preprocessor.pkl").open("rb") as f:
+        preprocessor = pickle.load(f)
+
+    imputer = preprocessor["imputer"]
+    scaler = preprocessor["scaler"]
+    feature_names = preprocessor["columns"]
+
+    x_dev_scaled = pd.DataFrame(scaler.transform(imputer.transform(x_dev)), columns=feature_names)
+    x_test_scaled = pd.DataFrame(scaler.transform(imputer.transform(x_test)), columns=feature_names)
 
     # 3. Load Random Forest
     with Path(MODELS_DIR / "rf_model.pkl").open("rb") as f:
@@ -46,7 +62,7 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, list[str]
     mlp_model.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
     mlp_model.eval()
 
-    return rf_model, dt_model, mlp_model, x_train, x_test, feature_names
+    return rf_model, dt_model, mlp_model, x_dev_scaled, x_test_scaled, feature_names
 
 
 def run_shap(model: object, x_test: pd.DataFrame, feature_names: list[str], name: str = "Random Forest") -> None:
@@ -98,6 +114,7 @@ def run_lime(  # noqa: PLR0913
         feature_names=feature_names,
         class_names=["No Diabetes", "Diabetes"],
         mode="classification",
+        discretize_continuous=False,
         random_state=42,
     )
 
@@ -114,8 +131,7 @@ def run_lime(  # noqa: PLR0913
     else:
 
         def predict_fn(x: np.ndarray) -> np.ndarray:
-            x_df = pd.DataFrame(x, columns=feature_names)
-            return model.predict_proba(x_df)
+            return model.predict_proba(x)
 
     # Generate explanations for specified indices
     for idx in indices:

@@ -37089,25 +37089,25 @@
 /***/ })
 /******/ ]);
 //# sourceMappingURL=bundle.js.map </script></head><body>
-        <div class="lime top_div" id="top_divL3TDRQS6JRRAHA5"></div>
+        <div class="lime top_div" id="top_divFYBBBWRVZYS59NO"></div>
         
         <script>
-        var top_div = d3.select('#top_divL3TDRQS6JRRAHA5').classed('lime top_div', true);
+        var top_div = d3.select('#top_divFYBBBWRVZYS59NO').classed('lime top_div', true);
         
             var pp_div = top_div.append('div')
                                 .classed('lime predict_proba', true);
             var pp_svg = pp_div.append('svg').style('width', '100%');
-            var pp = new lime.PredictProba(pp_svg, ["No Diabetes", "Diabetes"], [0.9952622652053833, 0.004737756215035915]);
+            var pp = new lime.PredictProba(pp_svg, ["No Diabetes", "Diabetes"], [0.9778343439102173, 0.022165626287460327]);
             
         
         var exp_div;
             var exp = new lime.Explanation(["No Diabetes", "Diabetes"]);
         
                 exp_div = top_div.append('div').classed('lime explanation', true);
-                exp.show([["diabetespedigreefunction > 0.46", 0.15495190204836373], ["age <= -0.79", -0.06456861986211108], ["pregnancies <= -0.82", -0.0491920337413544], ["-0.11 < glucose <= 0.64", 0.04074004426824887], ["insulin > 0.47", -0.017959844760329316], ["-1.33 < skinthickness <= 0.14", -0.011021955439776212], ["bloodpressure <= -0.42", -0.010308409894957574], ["-0.60 < bmi <= 0.02", 0.009131157541246134]], 1, exp_div);
+                exp.show([["glucose", 0.17212176278958413], ["bmi", 0.07866101119854439], ["diabetespedigreefunction", 0.07114372670937213], ["age", 0.06871467340485332], ["insulin", 0.06367048101070852], ["pregnancies", 0.052122739466370326], ["skinthickness", 0.02566338471312633], ["bloodpressure", 0.0029982544950274428]], 1, exp_div);
                 
         var raw_div = top_div.append('div');
-            exp.show_raw_tabular([["diabetespedigreefunction", "0.69", 0.15495190204836373], ["age", "-1.04", -0.06456861986211108], ["pregnancies", "-0.82", -0.0491920337413544], ["glucose", "0.26", 0.04074004426824887], ["insulin", "0.83", -0.017959844760329316], ["skinthickness", "0.14", -0.011021955439776212], ["bloodpressure", "-0.53", -0.010308409894957574], ["bmi", "-0.44", 0.009131157541246134]], 1, raw_div);
+            exp.show_raw_tabular([["glucose", "0.26", 0.17212176278958413], ["bmi", "-0.57", 0.07866101119854439], ["diabetespedigreefunction", "0.70", 0.07114372670937213], ["age", "-1.03", 0.06871467340485332], ["insulin", "0.21", 0.06367048101070852], ["pregnancies", "-0.82", 0.052122739466370326], ["skinthickness", "-0.62", 0.02566338471312633], ["bloodpressure", "-1.04", 0.0029982544950274428]], 1, raw_div);
         
         </script>
         </body></html>

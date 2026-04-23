@@ -1,0 +1,14 @@
+{
+  "dev_size": 1600,
+  "test_size": 400,
+  "feature_count": 8,
+  "dt_test_auprc": 0.9215769908590337,
+  "rf_test_auprc": 0.9873718191683971,
+  "mlp_test_auprc": 0.9474262945077149,
+  "saved_models": {
+    "dt": "../models/dt_model.pkl",
+    "rf": "../models/rf_model.pkl",
+    "mlp": "../models/mlp_model.pth",
+    "preprocessor": "../models/preprocessor.pkl"
+  }
+}

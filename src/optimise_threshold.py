@@ -1,117 +1,139 @@
 """Optimise thresholds for classification models to maximise F1-Score."""
 import json
 import logging
-import pickle
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import torch
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import average_precision_score, precision_recall_curve
-
-from models import MLP
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
-DATA_DIR = Path("../data/processed")
+RESULTS_DIR = Path("../results")
 MODELS_DIR = Path("../models")
 METRICS_DIR = Path("../results/metrics")
+METRICS_DIR.mkdir(parents=True, exist_ok=True)
 
 def find_optimal_threshold(
         y_true: np.ndarray,
         y_probs: np.ndarray,
         model_name: str = "Model",
-    ) -> tuple[float, np.ndarray, np.ndarray, float]:
+    ) -> dict[str, float | list[float]]:
     """Find threshold that maximises the F1-Score."""
     precision, recall, thresholds = precision_recall_curve(y_true, y_probs)
+
+    precision = precision[:-1]
+    recall = recall[:-1]
+
     f1_scores = 2 * (precision * recall) / (precision + recall + 1e-10)
 
-    best_idx = int(np.argmax(f1_scores[:-1]))
+    best_idx = int(np.argmax(f1_scores))
     best_threshold = float(thresholds[best_idx])
     best_f1 = float(f1_scores[best_idx])
+    best_precision = float(precision[best_idx])
+    best_recall = float(recall[best_idx])
+    auprc = float(average_precision_score(y_true, y_probs))
 
-    auprc = average_precision_score(y_true, y_probs)
 
-    logger.info(f"\n--- {model_name} Optimisation (VALIDATION) ---")
+    logger.info(f"\n--- {model_name} Threshold Optimisation ---")
     logger.info(f"AUPRC: {auprc:.4f}")
     logger.info(f"Optimal Threshold: {best_threshold:.4f}")
-    logger.info(f"Max F1-Score at this threshold: {best_f1:.4f}")
+    logger.info(f"Best F1: {best_f1:.4f}")
+    logger.info(f"Precision @ best threshold: {best_precision:.4f}")
+    logger.info(f"Recall @ best threshold: {best_recall:.4f}")
 
-    return best_threshold, thresholds, f1_scores[:-1], best_f1
-
-if __name__ == "__main__":
-    # Load Validation Set
-    x_val = pd.read_csv(DATA_DIR / "x_val.csv")
-    y_val = pd.read_csv(DATA_DIR / "y_val.csv").to_numpy().ravel()
-
-    # 1. Random Forest Predictions
-    with (MODELS_DIR / "rf_model.pkl").open("rb") as f:
-            rf_model = pickle.load(f)
-    rf_val_probs = rf_model.predict_proba(x_val)[:, 1]
-
-    # 2. Decision Tree Predictions
-    with (MODELS_DIR / "dt_model.pkl").open("rb") as f:
-            dt_model = pickle.load(f)
-    dt_val_probs = dt_model.predict_proba(x_val)[:, 1]
-
-    # 3. Multi-Layer Perceptron Predictions
-    mlp = MLP(x_val.shape[1])
-    state = torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True)
-    mlp.load_state_dict(state)
-    mlp.eval()
-    with torch.no_grad():
-        logits = mlp(torch.tensor(x_val.values, dtype=torch.float32))
-    mlp_val_probs = torch.sigmoid(logits).numpy().ravel()
-
-    # 3. Find Optimal Thresholds
-    rf_thresh, rf_ts, rf_f1s, rf_best_f1 = find_optimal_threshold(y_val, rf_val_probs, model_name="Random Forest")
-    dt_thresh, dt_ts, dt_f1s, dt_best_f1 = find_optimal_threshold(y_val, dt_val_probs, model_name="Decision Tree")
-    mlp_thresh, mlp_ts, mlp_f1s, mlp_best_f1 = find_optimal_threshold(y_val, mlp_val_probs, model_name="Multi-Layer Perceptron")  # noqa: E501
-
-    # 4. Save Artifacts
-    thresholds = {
-        "rf_threshold": rf_thresh,
-        "dt_threshold": dt_thresh,
-        "mlp_threshold": mlp_thresh,
-        "rf_best_f1": rf_best_f1,
-        "dt_best_f1": dt_best_f1,
-        "mlp_best_f1": mlp_best_f1,
-        "tuned_on": "validation",
+    return {
+        "threshold": best_threshold,
+        "best_f1": best_f1,
+        "precision": best_precision,
+        "recall": best_recall,
+        "auprc": auprc,
+        "thresholds": thresholds.tolist(),
+        "f1_scores": f1_scores.tolist(),
     }
 
-    METRICS_DIR.mkdir(parents=True, exist_ok=True)
-    with (METRICS_DIR / "thresholds.json").open("w") as f:
-        json.dump(thresholds, f, indent=4)
-    logger.info(f"\nOptimal thresholds saved to {METRICS_DIR / 'thresholds.json'}")
+def plot_f1_threshold_curves(results: dict[str, dict[str, float | list[float]]]) -> None:
+    """Plot F1-Threshold curves for all models."""
+    plt.figure(figsize=(8, 6))
 
-    # 5. Visualisation
-    plt.figure(figsize=(12, 5))
+    for model_name, result in results.items():
+        thresholds = np.array(result["thresholds"], dtype=float)
+        f1_scores = np.array(result["f1_scores"], dtype=float)
+        best_threshold = float(result["threshold"])
 
-    # Subplot 1: F1-Score vs Threshold
-    plt.subplot(1, 2, 1)
-    plt.plot(rf_ts, rf_f1s, label=f"RF (best={rf_thresh:.2f})")
-    plt.plot(dt_ts, dt_f1s, label=f"DT (best={dt_thresh:.2f})")
-    plt.plot(mlp_ts, mlp_f1s, label=f"MLP (best={mlp_thresh:.2f})")
+        plt.plot(thresholds, f1_scores, label=f"{model_name} (best={best_threshold:.3f})")
+
     plt.axvline(0.5, color="red", linestyle="--", label="Default 0.5")
     plt.xlabel("Threshold")
     plt.ylabel("F1-Score")
     plt.title("Threshold Optimisation")
     plt.legend()
+    plt.grid(visible=True, linestyle="--", alpha=0.5)
 
-    # Subplot 2: Calibration Curve
-    plt.subplot(1, 2, 2)
-    for name, probs in [("RF", rf_val_probs), ("DT", dt_val_probs), ("MLP", mlp_val_probs)]:
-        prob_true, prob_pred = calibration_curve(y_val, probs, n_bins=10)
-        plt.plot(prob_pred, prob_true, marker="o", label=name)
-    plt.plot([0, 1], [0, 1], linestyle="--", color="gray", label="Perfectly Calibrated")
+    out_dir = METRICS_DIR / "f1_threshold_optimisation.png"
+    plt.savefig(out_dir, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    logger.info(f"F1-Threshold Plot saved to {out_dir}")
+
+def plot_calibration_curves(y_true: np.ndarray, probs_dict: dict[str, np.ndarray]) -> None:
+    """Plot calibration curves for all models."""
+    plt.figure(figsize=(8, 6))
+
+    for model_name, probs in probs_dict.items():
+        prob_true, prob_pred = calibration_curve(y_true, probs, n_bins=10, pos_label=1)
+        plt.plot(prob_pred, prob_true, marker="o", label=model_name)
+
+    plt.plot([0, 1], [0, 1], linestyle="--", label="Perfectly Calibrated", color="gray")
     plt.xlabel("Mean Predicted Probability")
     plt.ylabel("Fraction of Positives")
     plt.title("Calibration Curve")
     plt.legend()
+    plt.grid(visible=True, linestyle="--", alpha=0.5)
 
-    plt.tight_layout()
-    plt.savefig(METRICS_DIR / "optimisation_results.png")
-    logger.info(f"\nPlot saved to {METRICS_DIR / 'optimisation_results.png'}")
+    out_dir = METRICS_DIR / "calibration_curve.png"
+    plt.savefig(out_dir, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    logger.info(f"Calibration Curve saved to {out_dir}")
+
+def save_thresholds(results: dict[str, dict[str, float | list[float]]]) -> None:
+    """Save tuned thresholds and metrics to JSON."""
+    thresholds = {
+        "dt_threshold": float(results["dt"]["threshold"]),
+        "rf_threshold": float(results["rf"]["threshold"]),
+        "mlp_threshold": float(results["mlp"]["threshold"]),
+    }
+
+    out_dir = METRICS_DIR / "thresholds.json"
+    with out_dir.open("w") as f:
+        json.dump(thresholds, f, indent=2)
+
+    logger.info(f"Tuned thresholds saved to {out_dir}")
+
+if __name__ == "__main__":
+    y_dev = np.load(MODELS_DIR / "y_dev.npy")
+
+    dt_oof_probs = np.load(MODELS_DIR / "dt_oof_probs.npy")
+    rf_oof_probs = np.load(MODELS_DIR / "rf_oof_probs.npy")
+    mlp_oof_probs = np.load(MODELS_DIR / "mlp_oof_probs.npy")
+
+    probs_dict = {
+        "DT": dt_oof_probs,
+        "RF": rf_oof_probs,
+        "MLP": mlp_oof_probs,
+    }
+
+    results = {
+        "dt": find_optimal_threshold(y_dev, dt_oof_probs, model_name="Decision Tree"),
+        "rf": find_optimal_threshold(y_dev, rf_oof_probs, model_name="Random Forest"),
+        "mlp": find_optimal_threshold(y_dev, mlp_oof_probs, model_name="Multi-Layer Perceptron"),
+    }
+
+    save_thresholds(results)
+    plot_f1_threshold_curves(results)
+    plot_calibration_curves(y_dev, probs_dict)
+
+    logger.info("Threshold optimisation completed successfully.")
