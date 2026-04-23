@@ -57,7 +57,7 @@ def train_rf(
             y_train: np.ndarray,
         ) -> RandomForestClassifier:
     """Train a Random Forest Classifier using training data."""
-    logger.info("Starting Random Forest training with 5-Fold CV...")
+    logger.info("Starting Random Forest training...")
 
     """
     best_params = {
@@ -108,7 +108,7 @@ def train_rf(
 
 def train_dt(x_train: pd.DataFrame, y_train: np.ndarray) -> DecisionTreeClassifier:
     """Train a Decision Tree Classifier using training data."""
-    logger.info("Starting Decision Tree training with 5-Fold CV...")
+    logger.info("Starting Decision Tree training...")
 
     """
     best_params = {
