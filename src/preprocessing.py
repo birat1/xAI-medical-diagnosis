@@ -18,8 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 SYMBOLIC_DIR = Path("../data/symbolic/")
-
-MEDICAL_COLS = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
+MEDICAL_COLS = ["glucose", "bloodpressure", "skinthickness", "insulin", "bmi"]
 
 def load_data(file_path: str) -> pd.DataFrame:
     """Load dataset from a CSV file."""
