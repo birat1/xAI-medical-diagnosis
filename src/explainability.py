@@ -104,17 +104,12 @@ def run_dice(  # noqa: PLR0913
     """Generate DiCE counterfactuals for given model."""
     logger.info("Generating DiCE counterfactual explanations...")
 
-    # Define continuous variables (Age/Pregnancies are discrete)
-    continuous_vars = feature_names.copy()
-    continuous_vars.remove("pregnancies")
-    continuous_vars.remove("age")
-
     # Combine x_train and y_train for DiCE
     train_dataset = pd.concat([x_train, y_train], axis=1)
-    d = dice_ml.Data(dataframe=train_dataset, continuous_features=continuous_vars, outcome_name="outcome")
+    d = dice_ml.Data(dataframe=train_dataset, continuous_features=feature_names, outcome_name="outcome")
 
     # Define permitted ranges for changeable features
-    actionable_features = ["glucose", "bmi", "bloodpressure", "insulin"]
+    actionable_features = ["glucose", "bmi", "bloodpressure", "insulin", "pregnancies", "age", "diabetespedigreefunction"]  # noqa: E501
     permitted_range = make_permitted_range(x_train, actionable_features, 0.05, 0.95)
     # logger.info(f"Permitted ranges for DiCE: {permitted_range}")
 
