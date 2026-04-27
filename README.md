@@ -30,7 +30,7 @@ uv run preprocessing.py --input [../data/raw/diabetes.csv] --output [../data/pro
 #### Hyperparameter Tuning
 
 ```py
-uv run train_models.py
+uv run tune_hyperparameters.py
 ```
 
 #### Model Training
