@@ -100,24 +100,48 @@ if __name__ == "__main__":
 
     # Save results to JSON
     final_results = {
-        "decision_tree": get_metrics(
-            "Decision Tree",
-            y_test,
-            dt_probs,
-            thresholds["decision_tree"],
-        ),
-        "random_forest": get_metrics(
-            "Random Forest",
-            y_test,
-            rf_probs,
-            thresholds["random_forest"],
-        ),
-        "mlp": get_metrics(
-            "MLP",
-            y_test,
-            mlp_probs,
-            thresholds["mlp"],
-        ),
+        "decision_tree": {
+            "default": get_metrics(
+                "Decision Tree (default)",
+                y_test,
+                dt_probs,
+                0.5,
+            ),
+            "tuned": get_metrics(
+                "Decision Tree (tuned)",
+                y_test,
+                dt_probs,
+                thresholds["decision_tree"],
+            ),
+        },
+        "random_forest": {
+            "default": get_metrics(
+                "Random Forest (default)",
+                y_test,
+                rf_probs,
+                0.5,
+            ),
+            "tuned": get_metrics(
+                "Random Forest (tuned)",
+                y_test,
+                rf_probs,
+                thresholds["random_forest"],
+            ),
+        },
+        "mlp": {
+            "default": get_metrics(
+                "MLP (default)",
+                y_test,
+                mlp_probs,
+                0.5,
+            ),
+            "tuned": get_metrics(
+                "MLP (tuned)",
+                y_test,
+                mlp_probs,
+                thresholds["mlp"],
+            ),
+        },
     }
 
     with (METRICS_DIR / "test_evaluation_results.json").open("w") as f:
