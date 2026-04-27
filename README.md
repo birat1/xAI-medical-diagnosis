@@ -1,10 +1,12 @@
 # Towards Explainable Medical Diagnosis: Counterfactual Explanations for Clinical Decisions
 
-This repository contains the code for my final year dissertation. The project develops and evaluates ML models for medical diagnosis, with a focus on interpretability and explainability through feature attribution methods and counterfactual explanations.
+This repository contains the code for my final year dissertation.
+
+The project develops and evaluates ML models for medical diagnosis, with a focus on interpretability and explainability through feature attribution methods and counterfactual explanations.
 
 ## Overview
 
-**Goal**: To develop a pipeline that combines predictive performance with interpretability. The system contains feature attribution methods (SHAP, LIME) and counterfactual explanations (DiCE, PyGol).
+**Goal**: To develop a pipeline that combines predictive performance with interpretability. The system contains feature attribution methods (SHAP, LIME) and counterfactual explanations (DiCE, PyGol).  
 **Covers**: Random Forest, Decision Trees, Multi-Layer Perception (MLP), [SHAP](https://github.com/shap/shap), [LIME](https://github.com/marcotcr/lime), [DiCE](https://github.com/interpretml/DiCE), [PyGol](https://github.com/danyvarghese/PyGol)  
 **Data**: Medical datasets (e.g., [Diabetes](https://www.kaggle.com/datasets/johndasilva/diabetes))
 
@@ -41,7 +43,7 @@ uv run train_models.py
 #### Threshold optimisation
 
 ```bash
-uv run optimise_threshold.py
+uv run tune_thresholds.py
 ```
 
 #### Model Evaluation
@@ -50,16 +52,16 @@ uv run optimise_threshold.py
 uv run evaluate_models.py
 ```
 
-#### Interpretability Layer (SHAP, LIME)
+#### Interpretability (SHAP, LIME)
 
 ```bash
-uv run interpretability.py
+uv run explain_models.py
 ```
 
-### Explainability Layer (DiCE, PyGol)
+### Explainability (DiCE, PyGol)
 
 ```bash
-uv run explainability.py
+uv run generate_counterfactuals.py
 ```
 
 ### Interpreting Counterfactuals
