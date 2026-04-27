@@ -20,6 +20,17 @@ logger = logging.getLogger(__name__)
 SYMBOLIC_DIR = Path("../data/symbolic/")
 MEDICAL_COLS = ["glucose", "bloodpressure", "skinthickness", "insulin", "bmi"]
 
+SYMBOLIC_ROUNDING = {
+    "pregnancies": 0,
+    "glucose": 0,
+    "bloodpressure": 0,
+    "skinthickness": 1,
+    "insulin": 1,
+    "bmi": 1,
+    "diabetespedigreefunction": 3,
+    "age": 0,
+}
+
 def load_data(file_path: str) -> pd.DataFrame:
     """Load dataset from a CSV file."""
     if not Path(file_path).exists():
@@ -114,10 +125,17 @@ def preprocess_and_split(  # noqa: PLR0913
         y_imputed_symbolic.append(y_val)
 
     x_full_symbolic = pd.DataFrame(np.vstack(x_imputed_symbolic), columns=x.columns)
+
+    for col, precision in SYMBOLIC_ROUNDING.items():
+        if col in x_full_symbolic.columns:
+            if precision == 0:
+                x_full_symbolic[col] = x_full_symbolic[col].round(0).astype(int)
+            else:
+                x_full_symbolic[col] = x_full_symbolic[col].round(precision)
+
     y_full_symbolic = pd.concat(y_imputed_symbolic).reset_index(drop=True)
 
     symbolic_combined = pd.concat([x_full_symbolic, y_full_symbolic], axis=1)
-
     symbolic_combined.to_csv(SYMBOLIC_DIR / "symbolic_diabetes.csv", index=False)
 
     logger.info(f"Imputed symbolic data saved to {SYMBOLIC_DIR}")
