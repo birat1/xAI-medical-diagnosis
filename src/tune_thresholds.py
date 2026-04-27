@@ -252,10 +252,9 @@ if __name__ == "__main__":
     logger.info(f"\nCV thresholds saved to {METRICS_DIR / 'thresholds.json'}")
 
     # 5. Visualisation
-    plt.figure(figsize=(12, 5))
+    plt.figure(figsize=(8, 6))
 
-    # Subplot 1: F1-Score vs Threshold
-    plt.subplot(1, 2, 1)
+    #Plot 1: F1-Score vs Threshold
     plt.plot(dt_results["thresholds"], dt_results["f1_scores"], label=f"DT (best={dt_results['threshold']:.2f})")
     plt.plot(rf_results["thresholds"], rf_results["f1_scores"], label=f"RF (best={rf_results['threshold']:.2f})")
     plt.plot(mlp_results["thresholds"], mlp_results["f1_scores"], label=f"MLP (best={mlp_results['threshold']:.2f})")
@@ -265,9 +264,11 @@ if __name__ == "__main__":
     plt.title("CV F1-Score vs Threshold")
     plt.legend()
 
-    # Subplot 2: Calibration Curve
-    plt.subplot(1, 2, 2)
+    plt.savefig(METRICS_DIR / "f1_threshold_curve.png", bbox_inches="tight")
+    logger.info(f"F1 vs Threshold plot saved to {METRICS_DIR / 'f1_threshold_curve.png'}")
+    plt.clf()
 
+    # Plot 2: Calibration Curve
     for name, probs in [
         ("DT", dt_oof_probs),
         ("RF", rf_oof_probs),
@@ -282,5 +283,6 @@ if __name__ == "__main__":
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig(METRICS_DIR / "optimisation_results.png")
-    logger.info(f"\nPlot saved to {METRICS_DIR / 'optimisation_results.png'}")
+    plt.savefig(METRICS_DIR / "calibration_curve.png", bbox_inches="tight")
+    logger.info(f"\nPlot saved to {METRICS_DIR / 'calibration_curve.png'}")
+    plt.clf()
