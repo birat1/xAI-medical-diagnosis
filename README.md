@@ -1,11 +1,11 @@
 # Towards Explainable Medical Diagnosis: Counterfactual Explanations for Clinical Decisions
 
-This repository contains the code for my final year dissertation. It focuses on generating counterfactual explanations to prove transparent and interpretable clinical decisions.
+This repository contains the code for my final year dissertation. The project develops and evaluates ML models for medical diagnosis, with a focus on interpretability and explainability through feature attribution methods and counterfactual explanations.
 
 ## Overview
 
-**Goal**: To develop a system that not only predicts medical conditions but explains them through "what-if" scenarios (counterfactuals).  
-**Covers**: Random Forest, Decision Trees, Multi-Layer Perception, [SHAP](https://github.com/shap/shap), [LIME](https://github.com/marcotcr/lime), [DiCE](https://github.com/interpretml/DiCE), [PyGol](https://github.com/danyvarghese/PyGol)  
+**Goal**: To develop a pipeline that combines predictive performance with interpretability. The system contains feature attribution methods (SHAP, LIME) and counterfactual explanations (DiCE, PyGol).
+**Covers**: Random Forest, Decision Trees, Multi-Layer Perception (MLP), [SHAP](https://github.com/shap/shap), [LIME](https://github.com/marcotcr/lime), [DiCE](https://github.com/interpretml/DiCE), [PyGol](https://github.com/danyvarghese/PyGol)  
 **Data**: Medical datasets (e.g., [Diabetes](https://www.kaggle.com/datasets/johndasilva/diabetes))
 
 ## Installation
@@ -19,56 +19,55 @@ uv sync
 
 ## Usage
 
-###
-
+Run the following steps in order:
 #### Preprocessing
 
-```py
-uv run preprocessing.py --input [../data/raw/diabetes.csv] --output [../data/processed]
+```bash
+uv run preprocessing.py --input ../data/raw/diabetes.csv --output ../data/processed
 ```
 
 #### Hyperparameter Tuning
 
-```py
+```bash
 uv run tune_hyperparameters.py
 ```
 
 #### Model Training
 
-```py
+```bash
 uv run train_models.py
 ```
 
 #### Threshold optimisation
 
-```py
+```bash
 uv run optimise_threshold.py
 ```
 
 #### Model Evaluation
 
-```py
+```bash
 uv run evaluate_models.py
 ```
 
 #### Interpretability Layer (SHAP, LIME)
 
-```py
+```bash
 uv run interpretability.py
 ```
 
 ### Explainability Layer (DiCE, PyGol)
 
-```py
+```bash
 uv run explainability.py
 ```
 
 ### Interpreting Counterfactuals
 
-```py
+```bash
 uv run interpret_counterfactuals.py
 ```
 
 ## Results
 
-Results are stored in the [results](https://github.com/birat1/xAI-medical-diagnosis/tree/master/results) folder.
+Detailed metrics, plots, and explanations are stored in the [results](https://github.com/birat1/xAI-medical-diagnosis/tree/master/results) folder.
