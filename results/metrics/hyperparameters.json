@@ -1,0 +1,27 @@
+{
+  "decision_tree": {
+    "ccp_alpha": 0.0019534422801276772,
+    "criterion": "log_loss",
+    "max_depth": 10,
+    "min_samples_leaf": 7,
+    "min_samples_split": 13
+  },
+  "random_forest": {
+    "bootstrap": false,
+    "max_depth": 15,
+    "max_features": "log2",
+    "min_samples_leaf": 1,
+    "min_samples_split": 17,
+    "n_estimators": 506
+  },
+  "mlp": {
+    "n_layers": 3,
+    "hidden_size_0": 128,
+    "hidden_size_1": 128,
+    "hidden_size_2": 128,
+    "lr": 0.0008360794771351786,
+    "weight_decay": 0.00023982386910789715,
+    "dropout": 0.118418009194755,
+    "batch_size": 32
+  }
+}

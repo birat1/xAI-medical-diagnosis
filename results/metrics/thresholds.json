@@ -1,9 +1,12 @@
 {
-    "rf_threshold": 0.39627665282853347,
-    "dt_threshold": 0.2426512968299712,
-    "mlp_threshold": 0.8232492804527283,
-    "rf_best_f1": 0.8253968253477356,
-    "dt_best_f1": 0.7969924811546357,
-    "mlp_best_f1": 0.9216589861251164,
-    "tuned_on": "validation"
+  "dt_threshold": 0.29932456452186273,
+  "rf_threshold": 0.47325469264453135,
+  "mlp_threshold": 0.7585927248001099,
+  "dt_validation_f1": 0.7604562737157223,
+  "rf_validation_f1": 0.8888888888391226,
+  "mlp_validation_f1": 0.8207547169311722,
+  "dt_validation_auprc": 0.8222556814427529,
+  "rf_validation_auprc": 0.9279493882391057,
+  "mlp_validation_auprc": 0.859020464614423,
+  "tuned_on": "validation"
 }
