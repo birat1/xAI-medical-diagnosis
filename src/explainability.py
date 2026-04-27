@@ -26,7 +26,10 @@ from PyGol import (
     pygol_train_test_split,
     read_constants_meta_info,
 )
+from PyGol_Tabular.PyGol_Tabular import PyGolCounterfactual, PyGolMultiClassifier
 from raiutils.exceptions import UserConfigValidationException
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
 from torch import nn
 
 from models import MLP, set_seed
@@ -35,6 +38,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 MODELS_DIR = Path("../models")
+METRICS_DIR = Path("../results/metrics")
 PROCESSED_DATA_DIR = Path("../data/processed")
 SYMBOLIC_DATA_DIR = Path("../data/symbolic")
 DICE_DIR = Path("../results/dice")
@@ -68,7 +72,19 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, pd.DataFr
         dt_model = pickle.load(f)
 
     # 5. Load MLP
-    mlp_model = MLP(input_size=len(feature_names))
+    with (METRICS_DIR / "hyperparameters.json").open("r") as f:
+        best_params = json.load(f)
+    mlp_params = best_params["mlp"]
+    hidden_layers = [
+        mlp_params[f"hidden_size_{i}"]
+        for i in range(mlp_params["n_layers"])
+    ]
+
+    mlp_model = MLP(
+        input_size=len(feature_names),
+        hidden_layers=hidden_layers,
+        dropout=mlp_params["dropout"],
+    )
     mlp_model.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
     mlp_model.eval()
 
@@ -339,13 +355,54 @@ def run_pygol(
 
     return evaluate_theory_prolog(model.hypothesis, str(bk_file), Test_P, Test_N)
 
+def run_pygol_tabular(symbolic_data: pd.DataFrame, target_name: str = "outcome") -> None:
+    """Counterfactual generation using PyGol_Tabular."""
+    x = symbolic_data.drop(columns=[target_name])
+    y = symbolic_data[target_name]
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y,
+        test_size=0.25,
+        random_state=42,
+        shuffle=True,
+    )
+
+    clf = PyGolMultiClassifier(
+        binner="entropy",
+        max_literals=2,
+        exact_literals=True,
+        min_pos=1,
+        max_neg = 0,
+        n_bins=5,
+        verbose=True,
+    )
+
+    clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+
+    logger.info(f"Accuracy score: {accuracy_score(y_test, y_pred)}")
+    logger.info(f"Test Classification Report:\n{classification_report(y_test, y_pred)}")
+    logger.info(f"Confusion Matrix:\n{confusion_matrix(y_test, y_pred)}")
+
+    cf = PyGolCounterfactual(clf, x_train)
+
+    result = cf.flip_example(
+        x_test,
+        row_index=1,
+        class_names={0: "Non-diabetic", 1: "Diabetic"},
+        target_class=None, # None = auto-flip to opposite
+        verify=True,
+    )
+
+    logger.info(f"Number of Changes Made: {result.n_changes}")
+    logger.info(f"Number of Target Rules Fired after CF: {len(result.target_rules_fired)}")
+
 
 if __name__ == "__main__":
     set_seed(42)
 
     # Load resources
     rf_model, dt_model, mlp_model, x_train, y_train, x_test, y_test, feature_names = load_resources()
-
 
     # 1. Generate DiCE counterfactuals for all models
     for i in range(5):
@@ -359,4 +416,9 @@ if __name__ == "__main__":
     # 2. Generate PyGol symbolic logical rules
     rules = run_pygol(symbolic_data, feature_names, target_name="outcome")
 
-    logger.info("Explainability tasks completed.")
+    logger.info("-------------------------------")
+
+    # 3. Generate PyGol_Tabular counterfactuals
+    run_pygol_tabular(symbolic_data, target_name="outcome")
+
+    logger.info("\nExplainability tasks completed.")

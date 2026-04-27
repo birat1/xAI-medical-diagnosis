@@ -1,5 +1,6 @@
 """Interpretability analysis using SHAP and LIME for diabetes prediction."""
 
+import json
 import logging
 import pickle
 from pathlib import Path
@@ -17,6 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 MODELS_DIR = Path("../models")
+METRICS_DIR = Path("../results/metrics")
 DATA_DIR = Path("../data/processed")
 SHAP_DIR = Path("../results/shap")
 LIME_DIR = Path("../results/lime")
@@ -42,7 +44,19 @@ def load_resources() -> tuple[object, MLP, pd.DataFrame, pd.DataFrame, list[str]
         dt_model = pickle.load(f)
 
     # 5. Load MLP
-    mlp_model = MLP(input_size=len(feature_names))
+    with (METRICS_DIR / "hyperparameters.json").open("r") as f:
+        best_params = json.load(f)
+    mlp_params = best_params["mlp"]
+    hidden_layers = [
+        mlp_params[f"hidden_size_{i}"]
+        for i in range(mlp_params["n_layers"])
+    ]
+
+    mlp_model = MLP(
+        input_size=len(feature_names),
+        hidden_layers=hidden_layers,
+        dropout=mlp_params["dropout"],
+    )
     mlp_model.load_state_dict(torch.load(MODELS_DIR / "mlp_model.pth", weights_only=True))
     mlp_model.eval()
 

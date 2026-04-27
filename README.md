@@ -27,10 +27,16 @@ uv sync
 uv run preprocessing.py --input [../data/raw/diabetes.csv] --output [../data/processed]
 ```
 
+#### Hyperparameter Tuning
+
+```py
+uv run train_models.py
+```
+
 #### Model Training
 
 ```py
-uv run models.py
+uv run train_models.py
 ```
 
 #### Threshold optimisation
