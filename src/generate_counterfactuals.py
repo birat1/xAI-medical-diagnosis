@@ -419,6 +419,6 @@ if __name__ == "__main__":
     logger.info("-------------------------------")
 
     # 3. Generate PyGol_Tabular counterfactuals
-    run_pygol_tabular(symbolic_data, target_name="outcome")
+    # run_pygol_tabular(symbolic_data, target_name="outcome")
 
     logger.info("\nExplainability tasks completed.")

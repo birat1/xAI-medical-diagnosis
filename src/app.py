@@ -1,15 +1,57 @@
 """Streamlit application for PyGol explainability analysis."""
-import json
 import re
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from PyGol_Tabular.PyGol_Tabular import PyGolCounterfactual, PyGolMultiClassifier
 
 SYMBOLIC_DATA_DIR = Path("../data/symbolic")
 RULES_DIR = Path("../results/pygol")
 
 st.set_page_config(layout="wide")
+
+@st.cache_resource
+def get_trained_model() -> tuple[PyGolMultiClassifier, pd.DataFrame]:
+    """Load data and train PyGol Tabular model."""
+    df = pd.read_csv(SYMBOLIC_DATA_DIR / "symbolic_diabetes.csv")
+    x = df.drop(columns=["outcome"])
+    y = df["outcome"]
+
+    clf = PyGolMultiClassifier(
+        binner="entropy",
+        max_literals=2,
+        n_bins=5,
+        verbose=False,
+    )
+    clf.fit(x, y)
+
+    return clf, df
+
+def run_tabular_explanation(patient_df: pd.DataFrame, full_train_df: pd.DataFrame) -> None:
+    """Run PyGol Tabular counterfactual explanation for a given patient."""
+    st.subheader("Counterfactual Analysis")
+
+    cf_gen = PyGolCounterfactual(clf, full_train_df.drop(columns=["outcome"]))
+
+    result = cf_gen.flip_example(
+        patient_df,
+        row_index=0,
+        class_names={0: "Non-Diabetic", 1: "Diabetic"},
+        verify=True,
+    )
+
+    if result.n_changes > 0:
+        display_label = "Non-Diabetic" if result.target_class == 0 else "Diabetic"
+        st.success(f"To change this prediction to **{display_label}**, the following changes are needed:")
+        # st.write(result.print)
+
+        for change in result.changes:
+            # st.write(change)
+            st.write(f"**{change['feature']}**: {change['from_value']} → {change['to_value']}")
+    else:
+        st.info("No counterfactuals found to change the prediction.")
+
 
 def get_counterfactual_suggestions(patient_idx: int, rules_json: dict) -> None:
     """Retrieve and display counterfactual rules for a given patient index."""
@@ -45,32 +87,24 @@ def get_counterfactual_suggestions(patient_idx: int, rules_json: dict) -> None:
 
 # -----------------------------------------------------------------------------
 
-symbolic_data = pd.read_csv(SYMBOLIC_DATA_DIR / "symbolic_diabetes.csv")
-with Path(RULES_DIR / "pygol_diabetes_rules.json").open("r") as f:
-    rules_data = json.load(f)
-
-# e.g. target(e_115)
-patient_idx = list(rules_data["analysis_results"].keys())
-# e.g. target(e_115) -> Patient 115
-display_labels = {k: f"Patient {k.split('(e_')[1].split(')')[0]}" for k in patient_idx}
+clf, symbolic_data = get_trained_model()
 
 st.title("PyGol Explainability Analysis")
+
+patient_list = [f"Patient {i}" for i in symbolic_data.index]
+
+select_patient_str = st.selectbox("Select a patient to analyse:", options=patient_list)
+selected_idx = int(select_patient_str.split(" ")[1])
+
+patient_row = symbolic_data.iloc[[selected_idx]].drop(columns=["outcome"])
+actual_outcome = "Diabetic" if symbolic_data.iloc[selected_idx]["outcome"] == 1 else "Non-Diabetic"
+
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    selected_patient = st.selectbox(
-        "Select a patient to analyse:",
-        options=patient_idx,
-        format_func=lambda x: display_labels[x],
-    )
-
-    selected_idx = int(selected_patient.split("(e_")[1].split(")")[0])
-    patient_row = symbolic_data.iloc[selected_idx].to_dict()
-
-    st.write("**Patient Summary:**")
-    st.json(patient_row)
+    st.write("### Patient Clinical Data")
+    st.dataframe(patient_row.T.rename(columns={selected_idx: "Value"}))
+    st.write(f"**Actual Outcome:** {actual_outcome}")
 
 with col2:
-    st.subheader("Counterfactual Suggestions:")
-    st.caption("(changes needed to flip prediction from non-diabetic to diabetic)")
-    get_counterfactual_suggestions(selected_patient, rules_data)
+    run_tabular_explanation(patient_row, symbolic_data)
