@@ -37089,25 +37089,25 @@
 /***/ })
 /******/ ]);
 //# sourceMappingURL=bundle.js.map </script></head><body>
-        <div class="lime top_div" id="top_divOZD2XD30YTOP8DQ"></div>
+        <div class="lime top_div" id="top_div23IQ630YQTO0HRZ"></div>
         
         <script>
-        var top_div = d3.select('#top_divOZD2XD30YTOP8DQ').classed('lime top_div', true);
+        var top_div = d3.select('#top_div23IQ630YQTO0HRZ').classed('lime top_div', true);
         
             var pp_div = top_div.append('div')
                                 .classed('lime predict_proba', true);
             var pp_svg = pp_div.append('svg').style('width', '100%');
-            var pp = new lime.PredictProba(pp_svg, ["No Diabetes", "Diabetes"], [0.869298940109594, 0.13070105989040595]);
+            var pp = new lime.PredictProba(pp_svg, ["No Diabetes", "Diabetes"], [0.8692989401095941, 0.13070105989040595]);
             
         
         var exp_div;
             var exp = new lime.Explanation(["No Diabetes", "Diabetes"]);
         
                 exp_div = top_div.append('div').classed('lime explanation', true);
-                exp.show([["age <= -0.79", -0.09680792903680348], ["diabetespedigreefunction > 0.46", 0.08378592651429059], ["-0.21 < insulin <= 0.39", 0.07933875028399634], ["-0.11 < glucose <= 0.64", 0.04611433147260257], ["bloodpressure <= -0.71", -0.04004924584300944], ["pregnancies <= -0.82", -0.030894656606392335], ["-0.71 < bmi <= -0.04", 0.004226177992951473], ["-0.72 < skinthickness <= -0.07", 0.00034104222771916205]], 1, exp_div);
+                exp.show([["age <= -0.79", -0.09680792903680348], ["diabetespedigreefunction > 0.46", 0.08378592651429057], ["-0.21 < insulin <= 0.39", 0.07933875028399634], ["-0.11 < glucose <= 0.64", 0.04611433147260257], ["bloodpressure <= -0.71", -0.04004924584300944], ["pregnancies <= -0.82", -0.030894656606392335], ["-0.71 < bmi <= -0.04", 0.004226177992951477], ["-0.72 < skinthickness <= -0.07", 0.000341042227719162]], 1, exp_div);
                 
         var raw_div = top_div.append('div');
-            exp.show_raw_tabular([["age", "-1.04", -0.09680792903680348], ["diabetespedigreefunction", "0.69", 0.08378592651429059], ["insulin", "0.23", 0.07933875028399634], ["glucose", "0.25", 0.04611433147260257], ["bloodpressure", "-1.04", -0.04004924584300944], ["pregnancies", "-0.82", -0.030894656606392335], ["bmi", "-0.56", 0.004226177992951473], ["skinthickness", "-0.61", 0.00034104222771916205]], 1, raw_div);
+            exp.show_raw_tabular([["age", "-1.04", -0.09680792903680348], ["diabetespedigreefunction", "0.69", 0.08378592651429057], ["insulin", "0.23", 0.07933875028399634], ["glucose", "0.25", 0.04611433147260257], ["bloodpressure", "-1.04", -0.04004924584300944], ["pregnancies", "-0.82", -0.030894656606392335], ["bmi", "-0.56", 0.004226177992951477], ["skinthickness", "-0.61", 0.000341042227719162]], 1, raw_div);
         
         </script>
         </body></html>

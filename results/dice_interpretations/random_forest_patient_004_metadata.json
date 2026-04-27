@@ -14,27 +14,27 @@ IMPUTED Patient Data (Clinical Units):
 imp          1.0    125.0           70.0           24.0    110.0  24.3                     0.221  25.0      0.0
 
 Counterfactuals (Clinical Units):
-      pregnancies  glucose  bloodpressure  skinthickness  insulin     bmi  diabetespedigreefunction    age  Outcome
-cf_1         1.00  172.467           70.0           24.0    110.0  24.300                     0.221  25.00      1.0
-cf_2         1.00  174.957           70.0           24.0    110.0  24.300                     0.221  25.00      1.0
-cf_3         1.00  163.028           70.0           24.0    110.0  24.300                     0.221  38.85      1.0
-cf_4         1.00  149.731           70.0           24.0    110.0  34.335                     0.221  25.00      1.0
-cf_5         4.78  158.809           70.0           24.0    110.0  24.300                     0.221  25.00      1.0
+      pregnancies  glucose  bloodpressure  skinthickness  insulin     bmi  diabetespedigreefunction   age  Outcome
+cf_1        4.606  179.997           70.0           24.0    110.0  24.300                     0.221  25.0      1.0
+cf_2        1.000  160.151           70.0           24.0    110.0  36.880                     0.221  25.0      1.0
+cf_3        1.000  175.374           70.0           24.0    110.0  24.300                     0.221  25.0      1.0
+cf_4        1.000  133.763           70.0           24.0    110.0  37.818                     0.221  25.0      1.0
+cf_5        1.000  172.998           70.0           24.0    110.0  35.772                     0.221  25.0      1.0
 
 Required Changes (Δ = CF - IMP):
-      pregnancies  glucose  bloodpressure  skinthickness  insulin     bmi  diabetespedigreefunction    age
-cf_1         0.00   47.467            0.0            0.0     -0.0  -0.000                       0.0  -0.00
-cf_2         0.00   49.957            0.0            0.0     -0.0  -0.000                       0.0  -0.00
-cf_3         0.00   38.028            0.0            0.0     -0.0  -0.000                       0.0  13.85
-cf_4         0.00   24.731            0.0            0.0     -0.0  10.035                       0.0  -0.00
-cf_5         3.78   33.809            0.0            0.0     -0.0  -0.000                       0.0  -0.00
+      pregnancies  glucose  bloodpressure  skinthickness  insulin     bmi  diabetespedigreefunction  age
+cf_1        3.606   54.997            0.0            0.0     -0.0  -0.000                       0.0 -0.0
+cf_2        0.000   35.151            0.0            0.0     -0.0  12.580                       0.0 -0.0
+cf_3        0.000   50.374            0.0            0.0     -0.0  -0.000                       0.0 -0.0
+cf_4        0.000    8.763            0.0            0.0     -0.0  13.518                       0.0 -0.0
+cf_5        0.000   47.998            0.0            0.0     -0.0  11.472                       0.0 -0.0
 
 Feature Change Frequency Across Counterfactuals:
 glucose                     5
+bmi                         3
 pregnancies                 1
-bmi                         1
-age                         1
 bloodpressure               0
 skinthickness               0
 insulin                     0
 diabetespedigreefunction    0
+age                         0

@@ -264,7 +264,7 @@ if __name__ == "__main__":
     plt.title("CV F1-Score vs Threshold")
     plt.legend()
 
-    plt.savefig(METRICS_DIR / "f1_threshold_curve.png", bbox_inches="tight")
+    plt.savefig(METRICS_DIR / "f1_threshold_curve.png", dpi=300, bbox_inches="tight")
     logger.info(f"F1 vs Threshold plot saved to {METRICS_DIR / 'f1_threshold_curve.png'}")
     plt.clf()
 
@@ -283,6 +283,6 @@ if __name__ == "__main__":
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig(METRICS_DIR / "calibration_curve.png", bbox_inches="tight")
+    plt.savefig(METRICS_DIR / "calibration_curve.png", dpi=300, bbox_inches="tight")
     logger.info(f"\nPlot saved to {METRICS_DIR / 'calibration_curve.png'}")
     plt.clf()
