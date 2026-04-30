@@ -22,7 +22,8 @@ uv sync
 ## Usage
 
 Run the following steps in order:
-#### Preprocessing
+
+### Preprocessing
 
 ```bash
 uv run preprocessing.py --input ../data/raw/diabetes.csv --output ../data/processed
@@ -68,6 +69,12 @@ uv run generate_counterfactuals.py
 
 ```bash
 uv run interpret_counterfactuals.py
+```
+
+### Streamlit Interface
+
+```bash
+uv run streamlit run app.py
 ```
 
 ## Results
