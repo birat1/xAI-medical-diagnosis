@@ -59,19 +59,19 @@ uv run evaluate_models.py
 uv run explain_models.py
 ```
 
-### Explainability (DiCE, PyGol)
+#### Explainability (DiCE, PyGol)
 
 ```bash
 uv run generate_counterfactuals.py
 ```
 
-### Interpreting Counterfactuals
+#### Interpreting Counterfactuals
 
 ```bash
 uv run interpret_counterfactuals.py
 ```
 
-### Streamlit Interface
+#### Streamlit Interface
 
 ```bash
 uv run streamlit run app.py
