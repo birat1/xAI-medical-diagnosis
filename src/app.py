@@ -18,6 +18,7 @@ def get_trained_model() -> tuple[PyGolMultiClassifier, pd.DataFrame]:
     x = df.drop(columns=["outcome"])
     y = df["outcome"]
 
+    # exact_literals = true/false
     clf = PyGolMultiClassifier(
         binner="entropy",
         max_literals=2,
@@ -25,6 +26,9 @@ def get_trained_model() -> tuple[PyGolMultiClassifier, pd.DataFrame]:
         verbose=False,
     )
     clf.fit(x, y)
+
+    # rules = clf._classifiers
+    # print(rules)
 
     return clf, df
 
@@ -40,6 +44,9 @@ def run_tabular_explanation(patient_df: pd.DataFrame, full_train_df: pd.DataFram
         class_names={0: "Non-Diabetic", 1: "Diabetic"},
         verify=True,
     )
+
+    # print(result.source_rules_fired)
+    # print(result.target_rules_fired)
 
     if result.n_changes > 0:
         display_label = "Non-Diabetic" if result.target_class == 0 else "Diabetic"
@@ -104,7 +111,6 @@ col1, col2 = st.columns([1, 2])
 with col1:
     st.write("### Patient Clinical Data")
     st.dataframe(patient_row.T.rename(columns={selected_idx: "Value"}))
-    st.write(f"**Actual Outcome:** {actual_outcome}")
 
 with col2:
     run_tabular_explanation(patient_row, symbolic_data)
