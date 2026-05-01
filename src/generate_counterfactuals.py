@@ -15,21 +15,7 @@ import dice_ml
 import pandas as pd
 import torch
 from pandas.errors import PerformanceWarning
-from PyGol import (
-    analysis_theory_examples,
-    bottom_clause_generation,
-    evaluate_theory_prolog,
-    prepare_examples,
-    prepare_logic_rules,
-    print_rules,
-    pygol_learn,
-    pygol_train_test_split,
-    read_constants_meta_info,
-)
-from PyGol_Tabular.PyGol_Tabular import PyGolCounterfactual, PyGolMultiClassifier
 from raiutils.exceptions import UserConfigValidationException
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.model_selection import train_test_split
 from torch import nn
 
 from models import MLP, set_seed
