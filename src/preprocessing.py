@@ -60,6 +60,19 @@ def _replace_zeros_with_nan(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
             df[col] = df[col].replace(0, np.nan)
     return df
 
+def _make_symbolic_dataframe(x_array: np.ndarray, columns: list[str]) -> pd.DataFrame:
+    """Create a rounded symbolic dataframe from imputed numpy array."""
+    symbolic_df = pd.DataFrame(x_array, columns=columns)
+
+    for col, precision in SYMBOLIC_ROUNDING.items():
+        if col in symbolic_df.columns:
+            if precision == 0:
+                symbolic_df[col] = symbolic_df[col].round(0).astype(int)
+            else:
+                symbolic_df[col] = symbolic_df[col].round(precision)
+
+    return symbolic_df
+
 def preprocess_and_split(  # noqa: PLR0913
         df: pd.DataFrame,
         target_col: str = "outcome",
@@ -115,27 +128,41 @@ def preprocess_and_split(  # noqa: PLR0913
     if make_val and x_val is not None:
         x_val_imputed = imputer.transform(x_val)
 
-    # Save a copy of imputed data for PyGol
+    # Save imputed, rounded splits for PyGol
     SYMBOLIC_DIR.mkdir(parents=True, exist_ok=True)
 
-    x_imputed_symbolic = [x_train_imputed, x_test_imputed]
-    y_imputed_symbolic = [y_train, y_test]
+    symbolic_x_train = _make_symbolic_dataframe(x_train_imputed, list(x.columns))
+    symbolic_x_test = _make_symbolic_dataframe(x_test_imputed, list(x.columns))
+
+    symbolic_y_train = y_train.reset_index(drop=True).to_frame(name=target_col)
+    symbolic_y_test = y_test.reset_index(drop=True).to_frame(name=target_col)
+
+    symbolic_x_train.to_csv(SYMBOLIC_DIR / "symbolic_x_train.csv", index=False)
+    symbolic_y_train.to_csv(SYMBOLIC_DIR / "symbolic_y_train.csv", index=False)
+    symbolic_x_test.to_csv(SYMBOLIC_DIR / "symbolic_x_test.csv", index=False)
+    symbolic_y_test.to_csv(SYMBOLIC_DIR / "symbolic_y_test.csv", index=False)
+
+    symbolic_parts_x = [symbolic_x_train, symbolic_x_test]
+    symbolic_parts_y = [symbolic_y_train, symbolic_y_test]
+
     if make_val and x_val is not None:
-        x_imputed_symbolic.append(x_val_imputed)
-        y_imputed_symbolic.append(y_val)
+        symbolic_x_val = _make_symbolic_dataframe(x_val_imputed, list(x.columns))
+        symbolic_y_val = y_val.reset_index(drop=True).to_frame(name=target_col)
 
-    x_full_symbolic = pd.DataFrame(np.vstack(x_imputed_symbolic), columns=x.columns)
+        symbolic_x_val.to_csv(SYMBOLIC_DIR / "symbolic_x_val.csv", index=False)
+        symbolic_y_val.to_csv(SYMBOLIC_DIR / "symbolic_y_val.csv", index=False)
 
-    for col, precision in SYMBOLIC_ROUNDING.items():
-        if col in x_full_symbolic.columns:
-            if precision == 0:
-                x_full_symbolic[col] = x_full_symbolic[col].round(0).astype(int)
-            else:
-                x_full_symbolic[col] = x_full_symbolic[col].round(precision)
+        symbolic_parts_x.append(symbolic_x_val)
+        symbolic_parts_y.append(symbolic_y_val)
 
-    y_full_symbolic = pd.concat(y_imputed_symbolic).reset_index(drop=True)
+    symbolic_combined = pd.concat(
+        [
+            pd.concat(symbolic_parts_x, axis=0).reset_index(drop=True),
+            pd.concat(symbolic_parts_y, axis=0).reset_index(drop=True),
+        ],
+        axis=1,
+    )
 
-    symbolic_combined = pd.concat([x_full_symbolic, y_full_symbolic], axis=1)
     symbolic_combined.to_csv(SYMBOLIC_DIR / "symbolic_diabetes.csv", index=False)
 
     logger.info(f"Imputed symbolic data saved to {SYMBOLIC_DIR}")
