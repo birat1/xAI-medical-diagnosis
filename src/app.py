@@ -2,7 +2,6 @@
 import json
 import pickle
 from pathlib import Path
-from unittest import result
 
 import numpy as np
 import pandas as pd
