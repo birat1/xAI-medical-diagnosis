@@ -1,0 +1,15 @@
+﻿Generate counterfactual explanations for the first 5 patients in the diabetes dataset. Each patient should have 5 counterfactual examples that changes their outcome to the opposite label. The generated counterfactuals should be realistic within the context of the diabetes dataset.
+
+The target labels are:
+- 0 = Non-diabetic
+- 1 = Diabetic  Do not restrict any features from changing when generating counterfactuals. Do not worry about immutable/mutable features.
+
+Do not use, reference, imitate, or rely on DiCE, PyGol, or any other explanation method when generating the counterfactuals. The counterfactuals should be generated independently using only the dataset.  Do not use or access any trained machine learning models, such as Decision Tree and Random Forest when generating counterfactuals.
+
+The output should be organised by patient, using Patient 0 to Patient 4.
+
+For each patient, provide a structured table with the following columns:
+
+| Patient | Counterfactual ID | Original Prediction | New Prediction After Flip | Original Feature Values | Counterfactual Feature Values | Changed Features | Reason for Prediction Flip |
+
+The counterfactuals should be treated as LLM-generated proposed counterfactuals for comparison.
