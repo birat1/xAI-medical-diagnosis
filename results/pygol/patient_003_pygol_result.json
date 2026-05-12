@@ -1,0 +1,38 @@
+{
+  "patient_id": "patient_003",
+  "target_class": 0,
+  "n_changes": 1,
+  "n_target_rules": 2,
+  "changes": [
+    {
+      "feature": "diabetespedigreefunction",
+      "from_bin": "[0.7305,0.7325]",
+      "to_bin": "[0.0885,0.1265]",
+      "from_value": 0.731,
+      "to_value": 0.126
+    }
+  ],
+  "source_rules_fired": [
+    {
+      "diabetespedigreefunction": "[0.7305,0.7325]",
+      "__label__": "1"
+    },
+    {
+      "pregnancies": "13.0",
+      "glucose": "[127.5,152.5]",
+      "__label__": "1"
+    }
+  ],
+  "target_rules_fired": [
+    {
+      "glucose": "[127.5,152.5]",
+      "diabetespedigreefunction": "[0.0885,0.1265]",
+      "__label__": "0"
+    },
+    {
+      "diabetespedigreefunction": "[0.0885,0.1265]",
+      "age": "[28.5,62.5]",
+      "__label__": "0"
+    }
+  ]
+}

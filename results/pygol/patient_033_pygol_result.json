@@ -1,0 +1,55 @@
+{
+  "patient_id": "patient_033",
+  "target_class": 1,
+  "n_changes": 2,
+  "n_target_rules": 3,
+  "changes": [
+    {
+      "feature": "insulin",
+      "from_bin": "[91.15,94.3]",
+      "to_bin": "[90.85,91.15]",
+      "from_value": 92.0,
+      "to_value": 91.0
+    },
+    {
+      "feature": "bmi",
+      "from_bin": "[27.35,41.65]",
+      "to_bin": "[52.8,61.9]",
+      "from_value": 31.1,
+      "to_value": 52.9
+    }
+  ],
+  "source_rules_fired": [
+    {
+      "bloodpressure": "[65.5,122]",
+      "insulin": "[91.15,94.3]",
+      "__label__": "0"
+    },
+    {
+      "glucose": "[83.5,94.5]",
+      "insulin": "[91.15,94.3]",
+      "__label__": "0"
+    },
+    {
+      "pregnancies": "0.0",
+      "glucose": "[83.5,94.5]",
+      "__label__": "0"
+    }
+  ],
+  "target_rules_fired": [
+    {
+      "insulin": "[90.85,91.15]",
+      "__label__": "1"
+    },
+    {
+      "bmi": "[52.8,61.9]",
+      "diabetespedigreefunction": "[0.1265,0.71]",
+      "__label__": "1"
+    },
+    {
+      "pregnancies": "0.0",
+      "bmi": "[52.8,61.9]",
+      "__label__": "1"
+    }
+  ]
+}

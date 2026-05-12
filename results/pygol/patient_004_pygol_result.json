@@ -1,0 +1,44 @@
+{
+  "patient_id": "patient_004",
+  "target_class": 1,
+  "n_changes": 1,
+  "n_target_rules": 2,
+  "changes": [
+    {
+      "feature": "bmi",
+      "from_bin": "[23.45,26.95]",
+      "to_bin": "[48.1,51.5]",
+      "from_value": 24.3,
+      "to_value": 48.3
+    }
+  ],
+  "source_rules_fired": [
+    {
+      "insulin": "[109.5,110]",
+      "age": "[23.5,28.5]",
+      "__label__": "0"
+    },
+    {
+      "glucose": "[118.5,126.5]",
+      "bmi": "[23.45,26.95]",
+      "__label__": "0"
+    },
+    {
+      "pregnancies": "1.0",
+      "bmi": "[23.45,26.95]",
+      "__label__": "0"
+    }
+  ],
+  "target_rules_fired": [
+    {
+      "glucose": "[118.5,126.5]",
+      "bmi": "[48.1,51.5]",
+      "__label__": "1"
+    },
+    {
+      "pregnancies": "1.0",
+      "bmi": "[48.1,51.5]",
+      "__label__": "1"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "patient_id": "patient_009",
+  "target_class": 1,
+  "n_changes": 1,
+  "n_target_rules": 2,
+  "changes": [
+    {
+      "feature": "diabetespedigreefunction",
+      "from_bin": "[0.1265,0.71]",
+      "to_bin": "[1.039,1.074]",
+      "from_value": 0.233,
+      "to_value": 1.057
+    }
+  ],
+  "source_rules_fired": [],
+  "target_rules_fired": [
+    {
+      "pregnancies": "1.0",
+      "diabetespedigreefunction": "[1.039,1.074]",
+      "__label__": "1"
+    },
+    {
+      "diabetespedigreefunction": "[1.039,1.074]",
+      "__label__": "1"
+    }
+  ]
+}

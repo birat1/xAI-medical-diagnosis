@@ -1,0 +1,33 @@
+{
+  "patient_id": "patient_001",
+  "target_class": 1,
+  "n_changes": 1,
+  "n_target_rules": 3,
+  "changes": [
+    {
+      "feature": "glucose",
+      "from_bin": "[127.5,152.5]",
+      "to_bin": "[180.5,182.5]",
+      "from_value": 130.0,
+      "to_value": 181.0
+    }
+  ],
+  "source_rules_fired": [],
+  "target_rules_fired": [
+    {
+      "glucose": "[180.5,182.5]",
+      "bloodpressure": "[24,65.5]",
+      "__label__": "1"
+    },
+    {
+      "pregnancies": "1.0",
+      "glucose": "[180.5,182.5]",
+      "__label__": "1"
+    },
+    {
+      "glucose": "[180.5,182.5]",
+      "insulin": "[121.4,217.1]",
+      "__label__": "1"
+    }
+  ]
+}

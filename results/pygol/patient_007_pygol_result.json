@@ -1,0 +1,33 @@
+{
+  "patient_id": "patient_007",
+  "target_class": 1,
+  "n_changes": 1,
+  "n_target_rules": 1,
+  "changes": [
+    {
+      "feature": "insulin",
+      "from_bin": "[74.45,78.95]",
+      "to_bin": "[70.25,70.75]",
+      "from_value": 77.3,
+      "to_value": 70.5
+    }
+  ],
+  "source_rules_fired": [
+    {
+      "insulin": "[74.45,78.95]",
+      "bmi": "[18.2,20.05]",
+      "__label__": "0"
+    },
+    {
+      "pregnancies": "1.0",
+      "insulin": "[74.45,78.95]",
+      "__label__": "0"
+    }
+  ],
+  "target_rules_fired": [
+    {
+      "insulin": "[70.25,70.75]",
+      "__label__": "1"
+    }
+  ]
+}

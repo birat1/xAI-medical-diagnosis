@@ -1,0 +1,28 @@
+{
+  "patient_id": "patient_008",
+  "target_class": 0,
+  "n_changes": 1,
+  "n_target_rules": 1,
+  "changes": [
+    {
+      "feature": "bmi",
+      "from_bin": "[43.05,43.35]",
+      "to_bin": "[43.45,43.55]",
+      "from_value": 43.3,
+      "to_value": 43.5
+    }
+  ],
+  "source_rules_fired": [
+    {
+      "pregnancies": "0.0",
+      "bmi": "[43.05,43.35]",
+      "__label__": "1"
+    }
+  ],
+  "target_rules_fired": [
+    {
+      "bmi": "[43.45,43.55]",
+      "__label__": "0"
+    }
+  ]
+}
