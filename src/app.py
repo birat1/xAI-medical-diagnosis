@@ -20,7 +20,11 @@ DICE_DIR = Path("../results/dice")
 RULES_DIR = Path("../results/pygol")
 RULES_DIR.mkdir(parents=True, exist_ok=True)
 
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="Counterfactual Analysis",
+    page_icon="🔍",
+    layout="wide",
+)
 
 ### Formatting functions
 def _model_name_to_folder(model_name: str) -> str:
@@ -207,7 +211,7 @@ def run_tabular_explanation(
         patient_idx: int,
     ) -> None:
     """Run PyGol Tabular counterfactual explanation for a given patient."""
-    st.subheader("PyGol Counterfactuals")
+    st.subheader("🔁 PyGol Counterfactuals")
 
     cf_gen = PyGolCounterfactual(clf, full_train_df.drop(columns=["outcome"]))
 
@@ -330,7 +334,7 @@ def calculate_dice_summary(orig_df: pd.DataFrame, cf_df: pd.DataFrame) -> dict:
 
 def display_dice_counterfactuals(patient_idx: int) -> None:
     """Display DiCE counterfactuals for the selected patient."""
-    st.subheader("DiCE Counterfactuals")
+    st.subheader("🔁 DiCE Counterfactuals")
 
     model_name = st.selectbox(
         "Select model for DiCE results:",
@@ -360,16 +364,38 @@ def display_dice_counterfactuals(patient_idx: int) -> None:
     st.write(f"Showing counterfactuals for **{model_name}**:")
     st.dataframe(dice_df, width="stretch")
 
+    if orig_df is not None:
+        feature_cols = [col for col in dice_df.columns if col not in ["Counterfactual ID", "Outcome"]]
+
+        delta_df = dice_df[["Counterfactual ID"]].copy()
+
+        for col in feature_cols:
+            delta_df[f"Δ {_format_feature_name(col)}"] = (dice_df[col] - orig_df[col].iloc[0])
+
+        delta_df = delta_df.round({
+            "Δ Pregnancies": 0,
+            "Δ Glucose": 0,
+            "Δ Blood Pressure": 0,
+            "Δ Skin Thickness": 1,
+            "Δ Insulin": 1,
+            "Δ BMI": 1,
+            "Δ Diabetes Pedigree Function": 3,
+            "Δ Age": 0,
+        })
+
+        st.write("Required Feature Changes")
+        st.dataframe(delta_df, width="stretch")
+
 
 # Streamlit App
 clf, symbolic_train_data, symbolic_test_data = get_trained_model()
 
-st.title("Counterfactual Analysis")
-st.caption("PyGol uses symbolic version of the test set. DiCE uses the processed version of the same test patients.")
+st.title("🧠 Counterfactual Analysis Dashboard")
+st.caption("Compare PyGol rule-based explanations with DiCE model counterfactuals for diabetes prediction.")
 
 patient_list = [f"Patient {i}" for i in symbolic_test_data.index]
 
-select_patient_str = st.selectbox("Select a patient to analyse:", options=patient_list)
+select_patient_str = st.selectbox("🔍 Select a patient to analyse:", options=patient_list)
 selected_idx = int(select_patient_str.split(" ")[1])
 
 patient_row = symbolic_test_data.iloc[[selected_idx]].drop(columns=["outcome"])
@@ -378,7 +404,7 @@ actual_outcome = _format_label(symbolic_test_data.iloc[selected_idx]["outcome"])
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    st.write("### Patient Clinical Data")
+    st.write("### 👤 Patient Clinical Data")
     st.dataframe(patient_row.T.rename(columns={selected_idx: "Value"}))
 
 with col2:
