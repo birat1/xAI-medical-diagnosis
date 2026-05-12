@@ -1,5 +1,6 @@
 """Streamlit application for PyGol explainability analysis."""
 import json
+import logging
 import pickle
 from pathlib import Path
 
@@ -7,12 +8,17 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from PyGol_Tabular.PyGol_Tabular import PyGolCounterfactual, PyGolMultiClassifier
+from sklearn.metrics import accuracy_score
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 # Paths
 PROCESSED_DATA_DIR = Path("../data/processed")
 SYMBOLIC_DATA_DIR = Path("../data/symbolic")
 DICE_DIR = Path("../results/dice")
 RULES_DIR = Path("../results/pygol")
+RULES_DIR.mkdir(parents=True, exist_ok=True)
 
 st.set_page_config(layout="wide")
 
@@ -136,6 +142,24 @@ def display_pygol_rules(source_rules: list[dict], target_rules: list[dict]) -> N
 
         _display_rule_cards(target_rules, "Target Rules (Counterfactual Prediction)")
 
+def save_pygol_result(patient_idx: int, result) -> None:
+    """Save PyGol rules and counterfactual changes to JSON."""
+    output = {
+        "patient_id": f"patient_{patient_idx:03d}",
+        "target_class": int(result.target_class),
+        "n_changes": int(result.n_changes),
+        "n_target_rules": len(result.target_rules_fired),
+        "changes": result.changes,
+        "source_rules_fired": result.source_rules_fired,
+        "target_rules_fired": result.target_rules_fired,
+    }
+
+    output_dir = RULES_DIR / f"patient_{patient_idx:03d}_pygol_result.json"
+    with output_dir.open("w") as f:
+        json.dump(output, f, indent=2, default=str)
+
+    return output_dir
+
 ### Data Loading
 @st.cache_resource
 def load_preprocessing_artifacts() -> dict:
@@ -164,16 +188,24 @@ def get_trained_model() -> tuple[PyGolMultiClassifier, pd.DataFrame, pd.DataFram
     )
     clf.fit(symbolic_x_train, symbolic_y_train["outcome"])
 
+    y_pred_test = clf.predict(symbolic_x_test)
+    logger.info(f"Accuracy Score: {accuracy_score(symbolic_y_test, y_pred_test)}")
+
     symbolic_train_data = pd.concat([symbolic_x_train, symbolic_y_train], axis=1)
     symbolic_test_data = pd.concat([symbolic_x_test, symbolic_y_test], axis=1)
 
     # rules = clf._classifiers
-    # print(rules)
+    # logger.info(rules)
 
     return clf, symbolic_train_data, symbolic_test_data
 
 ### PyGol
-def run_tabular_explanation(clf: PyGolMultiClassifier, patient_df: pd.DataFrame, full_train_df: pd.DataFrame) -> None:
+def run_tabular_explanation(
+        clf: PyGolMultiClassifier,
+        patient_df: pd.DataFrame,
+        full_train_df: pd.DataFrame,
+        patient_idx: int,
+    ) -> None:
     """Run PyGol Tabular counterfactual explanation for a given patient."""
     st.subheader("PyGol Counterfactuals")
 
@@ -198,6 +230,8 @@ def run_tabular_explanation(clf: PyGolMultiClassifier, patient_df: pd.DataFrame,
         st.caption(f"Features changed: {result.n_changes}")
         st.caption(f"Target rules fired: {len(result.target_rules_fired)}")
         display_pygol_rules(source_rules=result.source_rules_fired, target_rules=result.target_rules_fired)
+        output_dir = save_pygol_result(patient_idx, result)
+        logger.info(f"Saved PyGol result to: {output_dir}")
     else:
         st.info("No counterfactuals found to change the prediction.")
 
@@ -348,7 +382,12 @@ with col1:
     st.dataframe(patient_row.T.rename(columns={selected_idx: "Value"}))
 
 with col2:
-    run_tabular_explanation(clf=clf, patient_df=patient_row, full_train_df=symbolic_train_data)
+    run_tabular_explanation(
+        clf=clf,
+        patient_df=patient_row,
+        full_train_df=symbolic_train_data,
+        patient_idx=selected_idx,
+    )
 
 st.markdown("---")
 
